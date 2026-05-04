@@ -2,6 +2,6 @@
   "version": 2,
   "routes": [
     { "src": "/api/groq", "dest": "/api/groq.js" },
-    { "src": "/(.*)", "dest": "/$1" }
+    { "src": "/(.*)", "dest": "/public/$1" }
   ]
 }
