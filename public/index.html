@@ -1206,6 +1206,12 @@ function renderAnalytics() {
   html += '</div>';
   html += '<div class="agent-prompt-row"><input class="agent-input" type="text" id="agentInput" placeholder="' + T.askPlaceholder + '" onkeydown="if(event.key===\'Enter\')askAgent()"><button class="agent-btn" id="agentBtn" onclick="askAgent()">' + T.askBtn + ' \u2192</button></div>';
   html += '<div class="agent-output" id="agentOutput"><span style="color:var(--ink-light);font-size:13px;">' + T.defaultMsg + '</span></div>';
+  html += '<div id="agentExportBar" style="display:none;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);">'
+    + '<button onclick="exportInsightsPDF()" style="padding:7px 14px;background:var(--ink);color:white;border:none;border-radius:6px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:500;cursor:pointer;">🖨 ' + (_ia?'طباعة / PDF':'Print / PDF') + '</button>'
+    + '<button onclick="exportInsightsWord()" style="padding:7px 14px;background:#1a3a5c;color:white;border:none;border-radius:6px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:500;cursor:pointer;">📄 ' + (_ia?'تصدير Word':'Export Word') + '</button>'
+    + '<button onclick="exportInsightsExcel()" style="padding:7px 14px;background:#1a7a4a;color:white;border:none;border-radius:6px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:500;cursor:pointer;">📊 ' + (_ia?'تصدير Excel':'Export Excel') + '</button>'
+    + '<button onclick="copyInsights()" style="padding:7px 14px;background:var(--paper-warm);color:var(--ink);border:1px solid var(--rule);border-radius:6px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:500;cursor:pointer;">📋 ' + (_ia?'نسخ':'Copy') + '</button>'
+    + '</div>';
   html += '</div></div>';
 
   html += '<div class="section-divider">' + T.allSessions + '</div>';
@@ -1340,6 +1346,11 @@ CONTEXT: This may be a live session or saved notes. Continuously refine insights
       .replace(/^- (.+)$/gm,   '<span style="display:block;padding-left:12px;margin:2px 0;">• $1</span>')
       .replace(/\n{2,}/g, '<br><br>')
       .replace(/\n/g, '<br>');
+    // Store raw text for export and show export bar
+    window._lastAgentInsights = text;
+    window._lastAgentQuestion = question;
+    const bar = document.getElementById('agentExportBar');
+    if (bar) bar.style.display = 'flex';
 
   } catch(e) {
     try {
@@ -1361,6 +1372,107 @@ CONTEXT: This may be a live session or saved notes. Continuously refine insights
 }
 
 // ─── EXPORT FUNCTIONS ────────────────────────────────────────────────────────
+function getInsightsText() {
+  return window._lastAgentInsights || document.getElementById('agentOutput')?.innerText || '';
+}
+
+function exportInsightsPDF() {
+  const isAr = currentLang === 'ar';
+  const text = getInsightsText();
+  if (!text || text.length < 10) { showToast(isAr?'لا توجد رؤى للتصدير':'No insights to export'); return; }
+  const win = window.open('', '_blank');
+  win.document.write(`<!DOCTYPE html><html dir="${isAr?'rtl':'ltr'}"><head>
+    <meta charset="UTF-8">
+    <title>${isAr?'تحليل الجلسة':'Session Analysis'}</title>
+    <style>
+      body{font-family:Arial,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#1a1a18;line-height:1.7;}
+      h1{font-size:20px;margin-bottom:4px;}
+      .meta{font-size:12px;color:#888;margin-bottom:24px;}
+      .content{font-size:14px;white-space:pre-wrap;}
+      strong{display:block;margin-top:16px;font-size:15px;}
+      @media print{body{padding:20px;}}
+    </style>
+  </head><body>
+    <h1>${isAr?'تحليل الجلسة — وكيل التغذية الراجعة':'Session Analysis — Feedback Agent'}</h1>
+    <div class="meta">${new Date().toLocaleDateString(isAr?'ar-SA':'en-GB',{day:'numeric',month:'long',year:'numeric'})} · ${window._lastAgentQuestion||''}</div>
+    <div class="content">${text.replace(/
+/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div>
+  </body></html>`);
+  win.document.close();
+  setTimeout(() => win.print(), 400);
+}
+
+function exportInsightsWord() {
+  const isAr = currentLang === 'ar';
+  const text = getInsightsText();
+  if (!text || text.length < 10) { showToast(isAr?'لا توجد رؤى للتصدير':'No insights to export'); return; }
+  const date = new Date().toLocaleDateString(isAr?'ar-SA':'en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  <head><meta charset='utf-8'><title>Session Analysis</title>
+  <style>body{font-family:Arial;font-size:11pt;line-height:1.6;}h1{font-size:16pt;}p{margin:6pt 0;}</style>
+  </head><body dir="${isAr?'rtl':'ltr'}">
+  <h1>${isAr?'تحليل الجلسة':'Session Analysis'}</h1>
+  <p style="color:#888;font-size:10pt;">${date} · ${window._lastAgentQuestion||''}</p>
+  <hr>
+  ${text.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/
+/g,'<br>')}
+  </body></html>`;
+  const blob = new Blob([html], {type:'application/msword'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'session_analysis_' + new Date().toISOString().split('T')[0] + '.doc';
+  a.click();
+  showToast(isAr?'تم تصدير Word ✓':'Word exported ✓');
+}
+
+function exportInsightsExcel() {
+  const isAr = currentLang === 'ar';
+  const text = getInsightsText();
+  if (!text || text.length < 10) { showToast(isAr?'لا توجد رؤى للتصدير':'No insights to export'); return; }
+  const date = new Date().toISOString().split('T')[0];
+  const question = window._lastAgentQuestion || '';
+
+  // Parse sections from the insights text
+  const rows = [
+    [isAr?'التاريخ':'Date', date],
+    [isAr?'السؤال / الطلب':'Question / Prompt', question],
+    [],
+    [isAr?'القسم':'Section', isAr?'المحتوى':'Content'],
+  ];
+
+  // Split by ** headers **
+  const sections = text.split(/
+(?=\*\*)/);
+  sections.forEach(section => {
+    const lines = section.trim().split('
+');
+    const header = lines[0].replace(/\*\*/g,'').trim();
+    const body = lines.slice(1).join('
+').trim();
+    if (header) rows.push([header, body]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:30},{wch:80}];
+  // Wrap text in content column
+  for (let r = 4; r <= rows.length; r++) {
+    const cell = ws[XLSX.utils.encode_cell({r:r-1,c:1})];
+    if (cell) cell.s = {alignment:{wrapText:true,vertical:'top'}};
+  }
+  XLSX.utils.book_append_sheet(wb, ws, isAr?'الرؤى':'Insights');
+  XLSX.writeFile(wb, 'agent_insights_' + date + '.xlsx');
+  showToast(isAr?'تم تصدير Excel ✓':'Excel exported ✓');
+}
+
+function copyInsights() {
+  const isAr = currentLang === 'ar';
+  const text = getInsightsText();
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => showToast(isAr?'تم النسخ ✓':'Copied ✓'));
+}
+
+
 function exportSessionPDF() {
   window.print();
 }
