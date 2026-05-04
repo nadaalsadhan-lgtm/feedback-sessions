@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Feedback Sessions | جلسات تغذية راجعة</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -511,6 +512,10 @@ html[lang="ar"] .voice-timer { text-align:left; }
   </div>
 
   <button class="save-btn" id="saveBtn" onclick="saveSession()" data-en="Save Session Record" data-ar="حفظ سجل الجلسة">Save Session Record</button>
+<div style="display:flex;gap:10px;margin-top:10px;">
+  <button onclick="exportSessionPDF()" style="flex:1;padding:10px;background:var(--paper-warm);color:var(--ink);border:1.5px solid var(--rule);border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;" data-en="🖨 Print / Save as PDF" data-ar="🖨 طباعة / حفظ PDF">🖨 Print / Save as PDF</button>
+  <button onclick="exportSessionExcel()" style="flex:1;padding:10px;background:#1a7a4a;color:white;border:1.5px solid #1a7a4a;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;" data-en="📊 Export as Excel" data-ar="📊 تصدير Excel">📊 Export as Excel</button>
+</div>
 </div>
 
 <!-- VIEW: ANALYTICS -->
@@ -1204,6 +1209,10 @@ function renderAnalytics() {
   html += '</div></div>';
 
   html += '<div class="section-divider">' + T.allSessions + '</div>';
+  html += '<div style="display:flex;gap:8px;margin-bottom:12px;">'
+    + '<button onclick="exportAllExcel()" style="padding:8px 16px;background:#1a7a4a;color:white;border:none;border-radius:6px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:500;cursor:pointer;">📊 ' + (_ia?'تصدير الكل Excel':'Export All Excel') + '</button>'
+    + '<button onclick="exportAllPDF()" style="padding:8px 16px;background:var(--ink);color:white;border:none;border-radius:6px;font-family:DM Sans,sans-serif;font-size:12px;font-weight:500;cursor:pointer;">🖨 ' + (_ia?'طباعة التحليلات':'Print Analytics') + '</button>'
+    + '</div>';
   html += '<div style="overflow-x:auto;"><table class="sessions-table">';
   html += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.dateTh + '</th><th>' + T.overallTh + '</th><th>' + T.relTh + '</th><th>' + T.supTh + '</th><th>' + T.valTh + '</th><th></th></tr></thead>';
   html += '<tbody>' + tableRows + '</tbody></table></div>';
@@ -1349,6 +1358,100 @@ CONTEXT: This may be a live session or saved notes. Continuously refine insights
     }
   }
   btn.disabled = false;
+}
+
+// ─── EXPORT FUNCTIONS ────────────────────────────────────────────────────────
+function exportSessionPDF() {
+  window.print();
+}
+
+function exportSessionExcel() {
+  if (!selectedClient) { showToast(currentLang==='ar'?'اختر عميلاً أولاً':'Select a client first'); return; }
+  const isAr = currentLang === 'ar';
+
+  const rows = [
+    [isAr?'العميل':'Client', selectedClient.name],
+    [isAr?'المجموعة':'Group', selectedClient.group],
+    [isAr?'التاريخ':'Date', document.getElementById('sessionDate')?.value || ''],
+    [isAr?'أُجريت بواسطة':'Conducted by', document.getElementById('sessionBy')?.value || ''],
+    [isAr?'الحاضرون':'Attendees', document.getElementById('sessionAttendees')?.value || ''],
+    [isAr?'تاريخ المتابعة':'Follow-up date', document.getElementById('followupDate')?.value || ''],
+    [isAr?'درجة NPS':'NPS Score', overallScore !== null ? overallScore : ''],
+    [],
+    [isAr?'القسم':'Section', isAr?'السؤال':'Question', isAr?'التقييم':'Rating', isAr?'الملاحظات':'Notes'],
+  ];
+
+  QUESTIONS.forEach(q => {
+    const stars = document.querySelector(`.stars[data-q="${q.id}"]`);
+    const rating = stars ? (+stars.dataset.current || '') : '';
+    const notes = document.getElementById('notes-'+q.id)?.value || '';
+    rows.push([q.section, q.text, rating, notes]);
+  });
+
+  rows.push([]);
+  rows.push([isAr?'الالتزامات':'Commitments', document.getElementById('commitments')?.value || '']);
+
+  if (window._sessionAnalysis) {
+    rows.push([]);
+    rows.push([isAr?'تحليل الجلسة':'Session Analysis', window._sessionAnalysis]);
+  }
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:20},{wch:50},{wch:10},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws, isAr?'الجلسة':'Session');
+  XLSX.writeFile(wb, (selectedClient.name + '_feedback_' + (document.getElementById('sessionDate')?.value||'') + '.xlsx').replace(/\s+/g,'_'));
+  showToast(isAr?'تم التصدير ✓':'Exported ✓');
+}
+
+function exportAllExcel() {
+  if (!sessions.length) { showToast(currentLang==='ar'?'لا توجد جلسات':'No sessions'); return; }
+  const isAr = currentLang === 'ar';
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Summary
+  const summaryRows = [
+    [isAr?'العميل':'Client', isAr?'المجموعة':'Group', isAr?'التاريخ':'Date', isAr?'أُجريت بواسطة':'By', isAr?'درجة NPS':'NPS', isAr?'العلاقة':'Relationship', isAr?'الدعم':'Support', isAr?'القيمة':'Value', isAr?'الاحتكاك':'Friction'],
+  ];
+  sessions.forEach(s => {
+    const avg = (prefix) => {
+      const vals = Object.entries(s.ratings||{}).filter(([k,v])=>k.startsWith(prefix)&&v>0).map(([,v])=>v);
+      return vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length).toFixed(1) : '';
+    };
+    summaryRows.push([s.client, s.group==='BOTH'?'HYRDD & INVIEWS':s.group, s.date, s.conductedBy||'', s.overallScore||'', avg('wr'), avg('sp'), avg('vf'), avg('fd')]);
+  });
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary['!cols'] = [{wch:20},{wch:18},{wch:12},{wch:18},{wch:8},{wch:12},{wch:10},{wch:10},{wch:10}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, isAr?'ملخص':'Summary');
+
+  // Sheet 2+: One sheet per session
+  sessions.forEach(s => {
+    const rows = [
+      [isAr?'العميل':'Client', s.client],
+      [isAr?'التاريخ':'Date', s.date],
+      [isAr?'درجة NPS':'NPS Score', s.overallScore||''],
+      [isAr?'الالتزامات':'Commitments', s.commitments||''],
+      [],
+      [isAr?'القسم':'Section', isAr?'السؤال':'Question', isAr?'التقييم':'Rating', isAr?'الملاحظات':'Notes'],
+    ];
+    QUESTIONS.forEach(q => {
+      rows.push([q.section, q.text, (s.ratings||{})[q.id]||'', (s.notes||{})[q.id]||'']);
+    });
+    if (s.voiceAnalysis) { rows.push([]); rows.push([isAr?'التحليل':'Analysis', s.voiceAnalysis]); }
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:20},{wch:50},{wch:8},{wch:60}];
+    const sheetName = s.client.substring(0,28).replace(/[\\/:*?\[\]]/g,'');
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  });
+
+  XLSX.writeFile(wb, 'feedback_sessions_' + new Date().toISOString().split('T')[0] + '.xlsx');
+  showToast(isAr?'تم التصدير ✓':'Exported ✓');
+}
+
+function exportAllPDF() {
+  showView('analytics');
+  setTimeout(() => window.print(), 300);
 }
 
 // ─── INIT ────────────────────────────────────────────────────────────────────
