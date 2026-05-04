@@ -1381,23 +1381,25 @@ function exportInsightsPDF() {
   const text = getInsightsText();
   if (!text || text.length < 10) { showToast(isAr?'لا توجد رؤى للتصدير':'No insights to export'); return; }
   const win = window.open('', '_blank');
-  win.document.write(`<!DOCTYPE html><html dir="${isAr?'rtl':'ltr'}"><head>
-    <meta charset="UTF-8">
-    <title>${isAr?'تحليل الجلسة':'Session Analysis'}</title>
-    <style>
-      body{font-family:Arial,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#1a1a18;line-height:1.7;}
-      h1{font-size:20px;margin-bottom:4px;}
-      .meta{font-size:12px;color:#888;margin-bottom:24px;}
-      .content{font-size:14px;white-space:pre-wrap;}
-      strong{display:block;margin-top:16px;font-size:15px;}
-      @media print{body{padding:20px;}}
-    </style>
-  </head><body>
-    <h1>${isAr?'تحليل الجلسة — وكيل التغذية الراجعة':'Session Analysis — Feedback Agent'}</h1>
-    <div class="meta">${new Date().toLocaleDateString(isAr?'ar-SA':'en-GB',{day:'numeric',month:'long',year:'numeric'})} · ${window._lastAgentQuestion||''}</div>
-    <div class="content">${text.replace(/
-/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')}</div>
-  </body></html>`);
+  const _pdfDir = isAr ? 'rtl' : 'ltr';
+  const _pdfTitle = isAr ? 'تحليل الجلسة' : 'Session Analysis';
+  const _pdfH1 = isAr ? 'تحليل الجلسة' : 'Session Analysis — Feedback Agent';
+  const _pdfDate = new Date().toLocaleDateString(isAr?'ar-SA':'en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const _pdfQ = window._lastAgentQuestion || '';
+  const _pdfBody = text.replace(/\n/g,'<br>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  win.document.write(
+    '<!DOCTYPE html><html dir="'+_pdfDir+'"><head>'
+    +'<meta charset="UTF-8"><title>'+_pdfTitle+'</title>'
+    +'<style>body{font-family:Arial,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#1a1a18;line-height:1.7;}'
+    +'h1{font-size:20px;margin-bottom:4px;}.meta{font-size:12px;color:#888;margin-bottom:24px;}'
+    +'.content{font-size:14px;white-space:pre-wrap;}strong{display:block;margin-top:16px;font-size:15px;}'
+    +'@media print{body{padding:20px;}}</style>'
+    +'</head><body dir="'+_pdfDir+'">'
+    +'<h1>'+_pdfH1+'</h1>'
+    +'<div class="meta">'+_pdfDate+' · '+_pdfQ+'</div>'
+    +'<div class="content">'+_pdfBody+'</div>'
+    +'</body></html>'
+  );
   win.document.close();
   setTimeout(() => win.print(), 400);
 }
@@ -1407,16 +1409,18 @@ function exportInsightsWord() {
   const text = getInsightsText();
   if (!text || text.length < 10) { showToast(isAr?'لا توجد رؤى للتصدير':'No insights to export'); return; }
   const date = new Date().toLocaleDateString(isAr?'ar-SA':'en-GB',{day:'numeric',month:'long',year:'numeric'});
-  const html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-  <head><meta charset='utf-8'><title>Session Analysis</title>
-  <style>body{font-family:Arial;font-size:11pt;line-height:1.6;}h1{font-size:16pt;}p{margin:6pt 0;}</style>
-  </head><body dir="${isAr?'rtl':'ltr'}">
-  <h1>${isAr?'تحليل الجلسة':'Session Analysis'}</h1>
-  <p style="color:#888;font-size:10pt;">${date} · ${window._lastAgentQuestion||''}</p>
-  <hr>
-  ${text.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/
-/g,'<br>')}
-  </body></html>`;
+  const _wDir = isAr ? 'rtl' : 'ltr';
+  const _wTitle = isAr ? 'تحليل الجلسة' : 'Session Analysis';
+  const _wBody = text.replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>');
+  const _wQ = window._lastAgentQuestion || '';
+  const html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+    +'<head><meta charset="utf-8"><title>'+_wTitle+'</title>'
+    +'<style>body{font-family:Arial;font-size:11pt;line-height:1.6;}h1{font-size:16pt;}p{margin:6pt 0;}</style></head>'
+    +'<body dir="'+_wDir+'">'
+    +'<h1>'+_wTitle+'</h1>'
+    +'<p style="color:#888;font-size:10pt;">'+date+' · '+_wQ+'</p><hr>'
+    +_wBody
+    +'</body></html>';
   const blob = new Blob([html], {type:'application/msword'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1441,14 +1445,11 @@ function exportInsightsExcel() {
   ];
 
   // Split by ** headers **
-  const sections = text.split(/
-(?=\*\*)/);
+  const sections = text.split(/\n(?=\*\*)/);
   sections.forEach(section => {
-    const lines = section.trim().split('
-');
+    const lines = section.trim().split('\n');
     const header = lines[0].replace(/\*\*/g,'').trim();
-    const body = lines.slice(1).join('
-').trim();
+    const body = lines.slice(1).join('\n').trim();
     if (header) rows.push([header, body]);
   });
 
