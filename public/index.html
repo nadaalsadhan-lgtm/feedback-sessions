@@ -1250,6 +1250,11 @@ function renderOnboardingRatings() {
     productTh: _ia ? 'المنتج' : 'Product',
     scoreTh: _ia ? 'التقييم' : 'Rating',
     whenTh:  _ia ? 'التاريخ' : 'When',
+    feedbackTh: _ia ? 'الملاحظات' : 'Feedback',
+    actionsTh: _ia ? 'إجراءات' : 'Actions',
+    del:     _ia ? 'حذف' : 'Delete',
+    confirmDel: _ia ? 'حذف تقييم هذا العميل؟' : 'Delete this client\u2019s rating?',
+    noComment: _ia ? '—' : '—',
     error:   _ia ? 'تعذّر تحميل التقييمات' : 'Could not load ratings'
   };
 
@@ -1259,10 +1264,17 @@ function renderOnboardingRatings() {
   const scoreLabel = { easy: T.easy, neutral: T.neutral, difficult: T.difficult };
   const scoreCls   = { easy: 'score-hi', neutral: 'score-mid', difficult: 'score-lo' };
 
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
   fetch('/api/ratings')
     .then(function (r) { return r.json(); })
     .then(function (data) {
       const ratings = (data && data.ratings) ? data.ratings : [];
+      const comments = (data && data.comments) ? data.comments : {};
       if (!ratings.length) {
         box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
           + '<div class="empty-state" style="padding:2rem 1rem;"><div class="empty-state-icon">📨</div><p>' + T.empty + '</p></div>';
@@ -1281,7 +1293,6 @@ function renderOnboardingRatings() {
 
       let h = '<div class="section-divider">' + T.header + '</div>';
 
-      // stat cards (reusing existing .stat-grid / .stat-card)
       h += '<div class="stat-grid">';
       h += '<div class="stat-card"><div class="stat-val">' + counts.easy + '</div><div class="stat-lbl">🙂 ' + T.easy + '</div></div>';
       h += '<div class="stat-card"><div class="stat-val">' + counts.neutral + '</div><div class="stat-lbl">😐 ' + T.neutral + '</div></div>';
@@ -1289,27 +1300,51 @@ function renderOnboardingRatings() {
       h += '<div class="stat-card"><div class="stat-val">' + avg + '</div><div class="stat-lbl">' + T.avg + '</div></div>';
       h += '</div>';
 
-      // per-client table (reusing .sessions-table)
       const rows = Object.keys(latestByClient).map(function (client) {
         const rt = latestByClient[client];
         const when = rt.ratedAt
           ? new Date(rt.ratedAt).toLocaleDateString(_ia ? 'ar-SA' : 'en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
           : '—';
         const badge = '<span class="score-badge ' + (scoreCls[rt.score] || '') + '" style="width:auto;padding:0 10px;">' + (scoreLabel[rt.score] || rt.score) + '</span>';
+        const cm = comments[client] && comments[client].comment ? comments[client].comment : '';
+        const cmCell = cm
+          ? '<span style="font-size:12px;color:var(--ink-mid);">' + esc(cm) + '</span>'
+          : '<span style="font-size:12px;color:var(--ink-light);">' + T.noComment + '</span>';
+        const delBtn = '<button type="button" class="onb-del" data-client="' + esc(client)
+          + '" style="border:1px solid var(--rule);background:transparent;color:var(--danger);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;">' + T.del + '</button>';
         return '<tr>'
-          + '<td><strong style="font-size:13px;">' + client + '</strong></td>'
-          + '<td style="font-size:12px;color:var(--ink-mid);">' + (rt.product || '—') + '</td>'
+          + '<td><strong style="font-size:13px;">' + esc(client) + '</strong></td>'
+          + '<td style="font-size:12px;color:var(--ink-mid);">' + esc(rt.product || '—') + '</td>'
           + '<td>' + badge + '</td>'
+          + '<td style="max-width:220px;">' + cmCell + '</td>'
           + '<td style="font-size:12px;color:var(--ink-light);">' + when + '</td>'
+          + '<td>' + delBtn + '</td>'
           + '</tr>';
       }).join('');
 
       h += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);margin:.75rem 0 .5rem;">' + T.latest + '</div>';
       h += '<div style="overflow-x:auto;"><table class="sessions-table">';
-      h += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.productTh + '</th><th>' + T.scoreTh + '</th><th>' + T.whenTh + '</th></tr></thead>';
+      h += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.productTh + '</th><th>' + T.scoreTh + '</th><th>' + T.feedbackTh + '</th><th>' + T.whenTh + '</th><th>' + T.actionsTh + '</th></tr></thead>';
       h += '<tbody>' + rows + '</tbody></table></div>';
 
       box.innerHTML = h;
+
+      // wire up delete buttons
+      box.querySelectorAll('.onb-del').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const client = btn.getAttribute('data-client');
+          if (!window.confirm(T.confirmDel + ' (' + client + ')')) return;
+          btn.disabled = true; btn.textContent = '…';
+          fetch('/api/delete-rating', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client: client, metric: 'onboarding_effort' })
+          })
+            .then(function (r) { return r.json(); })
+            .then(function () { renderOnboardingRatings(); })
+            .catch(function () { btn.disabled = false; btn.textContent = T.del; });
+        });
+      });
     })
     .catch(function (err) {
       box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
