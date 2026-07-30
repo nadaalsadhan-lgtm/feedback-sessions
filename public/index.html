@@ -262,6 +262,7 @@ html[lang="ar"] .voice-timer { text-align:left; }
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="showView('select')" data-en="Select Client" data-ar="اختر عميل">Select Client</button>
       <button class="nav-tab" id="tab-session" style="display:none" onclick="showView('session')" data-en="Session" data-ar="الجلسة">Session</button>
+      <button class="nav-tab" onclick="showView('clients')" data-en="Clients" data-ar="العملاء">Clients</button>
       <button class="nav-tab" onclick="showView('analytics')" data-en="Analytics" data-ar="التحليلات">Analytics</button>
     </div>
     <button class="lang-toggle" id="langToggle" onclick="toggleLang()">🌐 <span id="langLabel">العربية</span></button>
@@ -530,6 +531,28 @@ html[lang="ar"] .voice-timer { text-align:left; }
   <div id="analyticsBody">
     <div class="empty-state"><div class="empty-state-icon">📋</div><p data-en="No sessions recorded yet.<br>Complete and save your first session to see analytics." data-ar="لا توجد جلسات مسجلة بعد.<br>أكمل وحفظ جلستك الأولى لعرض التحليلات.">No sessions recorded yet.<br>Complete and save your first session to see analytics.</p></div>
   </div>
+</div>
+
+<!-- VIEW: CLIENTS (directory) -->
+<div class="view" id="view-clients">
+  <p class="page-eyebrow" data-en="Directory" data-ar="الدليل">Directory</p>
+  <h1 class="page-title" data-en="Clients" data-ar="العملاء">Clients</h1>
+  <p class="page-sub" data-en="Select a client to view all their feedback across types." data-ar="اختر عميلاً لعرض جميع ملاحظاتهم عبر الأنواع.">Select a client to view all their feedback across types.</p>
+
+  <div class="group-tabs">
+    <button class="group-tab active" data-cgroup="ALL" onclick="filterClientsDir('ALL',this)" data-en="All" data-ar="الكل">All</button>
+    <button class="group-tab" data-cgroup="HYRDD" onclick="filterClientsDir('HYRDD',this)">HYRDD</button>
+    <button class="group-tab" data-cgroup="INVIEWS" onclick="filterClientsDir('INVIEWS',this)">INVIEWS</button>
+    <button class="group-tab" data-cgroup="BOTH" onclick="filterClientsDir('BOTH',this)" data-en="HYRDD & INVIEWS" data-ar="HYRDD و INVIEWS">HYRDD & INVIEWS</button>
+  </div>
+
+  <div class="client-grid" id="clientsDirGrid"></div>
+</div>
+
+<!-- VIEW: CLIENT PAGE (single client) -->
+<div class="view" id="view-clientpage">
+  <button class="btn-sm" onclick="showView('clients')" data-en="← All clients" data-ar="← جميع العملاء" style="margin-bottom:1rem;">← All clients</button>
+  <div id="clientPageBody"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -932,9 +955,10 @@ function showView(v) {
   document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
-  const tabMap = {select:0, session:1, analytics:2};
+  const tabMap = {select:0, session:1, clients:2, analytics:3};
   document.querySelectorAll('.nav-tab')[tabMap[v] ?? 0]?.classList.add('active');
   if (v === 'analytics') { renderAnalytics(); renderOnboardingRatings(); }
+  if (v === 'clients') renderClientsDirectory();
   if (v === 'session') document.getElementById('view-session').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
@@ -1350,6 +1374,146 @@ function renderOnboardingRatings() {
       box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
         + '<div style="color:var(--danger);font-size:13px;padding:.5rem 0;">' + T.error + ': ' + err.message + '</div>';
     });
+}
+
+
+// ─── CLIENTS DIRECTORY (Stage 1) ─────────────────────────────────────────────
+// Builds the client list from the existing Select-Client chips, so it always
+// matches your ~51 named clients (HYRDD / INVIEWS / BOTH).
+function getClientList() {
+  var chips = document.querySelectorAll('#clientGrid .client-chip');
+  var list = [];
+  chips.forEach(function (c) {
+    var name = c.getAttribute('data-name');
+    var group = c.getAttribute('data-group');
+    if (name) list.push({ name: name, group: group });
+  });
+  return list;
+}
+
+function filterClientsDir(group, btn) {
+  document.querySelectorAll('#view-clients .group-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#clientsDirGrid .client-chip').forEach(function (chip) {
+    var g = chip.getAttribute('data-group');
+    chip.style.display = (group === 'ALL' || g === group) ? '' : 'none';
+  });
+}
+
+function renderClientsDirectory() {
+  var grid = document.getElementById('clientsDirGrid');
+  if (!grid) return;
+  var list = getClientList();
+  grid.innerHTML = list.map(function (c) {
+    return '<div class="client-chip" data-group="' + c.group + '" data-name="' + c.name + '" '
+      + 'onclick="openClientPage(this.getAttribute(\'data-name\'), this.getAttribute(\'data-group\'))">'
+      + '<span class="chip-name">' + c.name + '</span>'
+      + '<span class="chip-tag">' + c.group + '</span></div>';
+  }).join('');
+}
+
+// ─── CLIENT PAGE (single client 360 view) ────────────────────────────────────
+function openClientPage(name, group) {
+  showView('clientpage');
+  var body = document.getElementById('clientPageBody');
+  var _ia = currentLang === 'ar';
+  var pillCls = group === 'HYRDD' ? 'pill-hyrdd' : group === 'INVIEWS' ? 'pill-inviews' : 'pill-both';
+
+  var T = {
+    loading: _ia ? 'جارٍ التحميل…' : 'Loading…',
+    onboarding: _ia ? 'تجربة الانضمام' : 'Onboarding Experience',
+    sessions: _ia ? 'جلسات التغذية الراجعة' : 'Feedback Sessions',
+    noOnb: _ia ? 'لا يوجد تقييم انضمام بعد.' : 'No onboarding rating yet.',
+    noSess: _ia ? 'لا توجد جلسات مسجلة لهذا العميل.' : 'No recorded sessions for this client.',
+    rating: _ia ? 'التقييم' : 'Rating',
+    feedback: _ia ? 'ملاحظات' : 'Feedback',
+    when: _ia ? 'التاريخ' : 'When',
+    comingSoon: _ia ? 'قريبًا' : 'Coming soon'
+  };
+
+  // Header
+  var h = '<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.25rem;">'
+    + '<h1 class="page-title" style="margin:0;">' + name + '</h1>'
+    + '<span class="score-pill ' + pillCls + '" style="padding:2px 12px;border-radius:20px;font-size:12px;">' + group + '</span>'
+    + '</div>'
+    + '<p class="page-sub">' + (_ia ? 'جميع ملاحظات هذا العميل في مكان واحد.' : 'All feedback for this client in one place.') + '</p>';
+
+  // Container for async sections
+  h += '<div id="cp-onboarding"><div class="section-divider">' + T.onboarding + '</div>'
+    + '<div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div>';
+
+  // In-app sessions (from localStorage) for this client
+  h += '<div id="cp-sessions"></div>';
+
+  // Placeholders for future feedback types
+  h += '<div class="section-divider">NPS</div>'
+    + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.comingSoon + '</div>';
+  h += '<div class="section-divider">' + (_ia ? 'التدريب' : 'Training') + '</div>'
+    + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.comingSoon + '</div>';
+
+  body.innerHTML = h;
+
+  // --- Fill onboarding rating from /api/ratings ---
+  fetch('/api/ratings')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var ratings = (data && data.ratings) ? data.ratings : [];
+      var comments = (data && data.comments) ? data.comments : {};
+      // match by client name (case-insensitive, trimmed)
+      var target = name.trim().toLowerCase();
+      var rt = null;
+      for (var i = 0; i < ratings.length; i++) {
+        if ((ratings[i].client || '').trim().toLowerCase() === target) { rt = ratings[i]; break; }
+      }
+      var scoreLabel = { easy: (_ia?'سهل':'Easy'), neutral: (_ia?'محايد':'Neutral'), difficult: (_ia?'صعب':'Difficult') };
+      var scoreCls = { easy: 'score-hi', neutral: 'score-mid', difficult: 'score-lo' };
+      var box = document.getElementById('cp-onboarding');
+      if (!rt) {
+        box.innerHTML = '<div class="section-divider">' + T.onboarding + '</div>'
+          + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.noOnb + '</div>';
+        return;
+      }
+      var when = rt.ratedAt ? new Date(rt.ratedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+      var cm = comments[rt.client] && comments[rt.client].comment ? comments[rt.client].comment : '';
+      var badge = '<span class="score-badge ' + (scoreCls[rt.score]||'') + '" style="width:auto;padding:0 10px;">' + (scoreLabel[rt.score]||rt.score) + '</span>';
+      var html = '<div class="section-divider">' + T.onboarding + '</div>';
+      html += '<div style="overflow-x:auto;"><table class="sessions-table">';
+      html += '<thead><tr><th>' + T.rating + '</th><th>' + T.feedback + '</th><th>' + T.when + '</th></tr></thead>';
+      html += '<tbody><tr><td>' + badge + '</td>'
+        + '<td style="font-size:12px;color:var(--ink-mid);">' + (cm ? cm.replace(/</g,'&lt;') : '—') + '</td>'
+        + '<td style="font-size:12px;color:var(--ink-light);">' + when + '</td></tr></tbody></table></div>';
+      box.innerHTML = html;
+    })
+    .catch(function () {
+      var box = document.getElementById('cp-onboarding');
+      if (box) box.innerHTML = '<div class="section-divider">' + T.onboarding + '</div>'
+        + '<div style="color:var(--ink-light);font-size:13px;">' + T.noOnb + '</div>';
+    });
+
+  // --- In-app feedback sessions for this client (from localStorage) ---
+  try {
+    var all = JSON.parse(localStorage.getItem('fb_sessions') || '[]');
+    var mine = all.filter(function (s) { return (s.client || '').trim().toLowerCase() === name.trim().toLowerCase(); });
+    var sBox = document.getElementById('cp-sessions');
+    if (sBox) {
+      if (!mine.length) {
+        sBox.innerHTML = '<div class="section-divider">' + T.sessions + '</div>'
+          + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.noSess + '</div>';
+      } else {
+        var rows = mine.map(function (s) {
+          var d = s.date ? new Date(s.date).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+          var sc = (s.overallScore !== undefined && s.overallScore !== null && s.overallScore !== '') ? s.overallScore : '—';
+          var by = s.conductedBy || '—';
+          return '<tr><td style="font-size:12px;">' + d + '</td><td style="font-size:12px;">' + (_ia?'الدرجة':'Score') + ': ' + sc + ' · ' + by + '</td></tr>';
+        }).join('');
+        sBox.innerHTML = '<div class="section-divider">' + T.sessions + '</div>'
+          + '<div style="overflow-x:auto;"><table class="sessions-table"><thead><tr><th>' + T.when + '</th><th>' + (_ia?'ملخص':'Summary') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+      }
+    }
+  } catch (e) {
+    var sBox2 = document.getElementById('cp-sessions');
+    if (sBox2) sBox2.innerHTML = '';
+  }
 }
 
 
