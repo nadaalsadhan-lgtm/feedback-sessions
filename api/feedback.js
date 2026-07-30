@@ -1,10 +1,11 @@
 // api/feedback.js
 // ============================================================
-// Saves the follow-up comment a client types after choosing
-// Neutral or Difficult. Called by the form on the thank-you page.
+// Saves the follow-up comment a client types on the thank-you page.
+// Works for BOTH onboarding and NPS (metric distinguishes them).
 // Storage: Upstash Redis via REST (same env vars as rate.js).
 //
-// POST body: { client, product, score, token, comment }
+// POST body: { client, product, score, token, comment, metric? }
+//   metric defaults to "onboarding_effort" if not provided.
 // ============================================================
 
 module.exports = async function handler(req, res) {
@@ -19,12 +20,15 @@ module.exports = async function handler(req, res) {
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
     body = body || {};
 
+    var metric = body.metric || 'onboarding_effort';
+
     var record = {
       client: body.client || '',
       product: body.product || '',
+      metric: metric,
       score: body.score || '',
       token: body.token || '',
-      comment: (body.comment || '').toString().slice(0, 2000), // cap length
+      comment: (body.comment || '').toString().slice(0, 2000),
       at: new Date().toISOString()
     };
 
@@ -34,8 +38,8 @@ module.exports = async function handler(req, res) {
     var authToken = process.env.KV_REST_API_TOKEN;
     if (url && authToken) {
       var payload = encodeURIComponent(JSON.stringify(record));
-      // latest comment per client, plus an append-only comment log
-      await fetch(url + '/set/comment:' + record.client + ':onboarding_effort/' + payload, {
+      // latest comment per client+metric, plus an append-only comment log
+      await fetch(url + '/set/comment:' + record.client + ':' + metric + '/' + payload, {
         headers: { Authorization: 'Bearer ' + authToken }
       });
       await fetch(url + '/lpush/comments:log/' + payload, {
