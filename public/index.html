@@ -551,7 +551,7 @@ html[lang="ar"] .voice-timer { text-align:left; }
 
 <!-- VIEW: CLIENT PAGE (single client) -->
 <div class="view" id="view-clientpage">
-  <button class="btn-sm" onclick="showView('clients')" data-en="← All clients" data-ar="← جميع العملاء" style="margin-bottom:1rem;">← All clients</button>
+  <button class="btn-sm" onclick="showView('clients')" data-en="← All clients" data-ar="← جميع العملاء" style="margin-bottom:1rem;background:var(--ink);color:#fff;">← All clients</button>
   <div id="clientPageBody"></div>
 </div>
 
@@ -1446,8 +1446,8 @@ function openClientPage(name, group) {
   h += '<div id="cp-sessions"></div>';
 
   // Placeholders for future feedback types
-  h += '<div class="section-divider">NPS</div>'
-    + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.comingSoon + '</div>';
+  h += '<div id="cp-nps"><div class="section-divider">NPS</div>'
+    + '<div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div>';
   h += '<div class="section-divider">' + (_ia ? 'التدريب' : 'Training') + '</div>'
     + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.comingSoon + '</div>';
 
@@ -1468,6 +1468,9 @@ function openClientPage(name, group) {
       var scoreLabel = { easy: (_ia?'سهل':'Easy'), neutral: (_ia?'محايد':'Neutral'), difficult: (_ia?'صعب':'Difficult') };
       var scoreCls = { easy: 'score-hi', neutral: 'score-mid', difficult: 'score-lo' };
       var box = document.getElementById('cp-onboarding');
+      // render NPS regardless of whether onboarding exists
+      renderClientNps(data, target, _ia, T);
+
       if (!rt) {
         box.innerHTML = '<div class="section-divider">' + T.onboarding + '</div>'
           + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.noOnb + '</div>';
@@ -1514,6 +1517,38 @@ function openClientPage(name, group) {
     var sBox2 = document.getElementById('cp-sessions');
     if (sBox2) sBox2.innerHTML = '';
   }
+}
+
+// Renders the NPS section on a client page (called from openClientPage's fetch).
+function renderClientNps(data, target, _ia, T) {
+  var npsBox = document.getElementById('cp-nps');
+  if (!npsBox) return;
+  var npsArr = (data && data.nps) ? data.nps : [];
+  var npsComments = (data && data.npsComments) ? data.npsComments : {};
+  var npsRt = null;
+  for (var p = 0; p < npsArr.length; p++) {
+    if ((npsArr[p].client || '').trim().toLowerCase() === target) { npsRt = npsArr[p]; break; }
+  }
+  if (!npsRt) {
+    npsBox.innerHTML = '<div class="section-divider">NPS</div>'
+      + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">'
+      + (_ia ? 'لا يوجد تقييم NPS بعد.' : 'No NPS score yet.') + '</div>';
+    return;
+  }
+  var val = (typeof npsRt.value === 'number') ? npsRt.value : parseInt(npsRt.score, 10);
+  var cat = npsRt.category || (val >= 9 ? 'promoter' : val >= 7 ? 'passive' : 'detractor');
+  var catLabel = { promoter: (_ia?'مروّج':'Promoter'), passive: (_ia?'محايد':'Passive'), detractor: (_ia?'منتقد':'Detractor') };
+  var catCls = { promoter: 'score-hi', passive: 'score-mid', detractor: 'score-lo' };
+  var npsWhen = npsRt.ratedAt ? new Date(npsRt.ratedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+  var npsCm = npsComments[npsRt.client] && npsComments[npsRt.client].comment ? npsComments[npsRt.client].comment : '';
+  var npsBadge = '<span class="score-badge ' + (catCls[cat]||'') + '" style="width:auto;padding:0 10px;">' + val + ' · ' + (catLabel[cat]||cat) + '</span>';
+  var nh = '<div class="section-divider">NPS</div>';
+  nh += '<div style="overflow-x:auto;"><table class="sessions-table">';
+  nh += '<thead><tr><th>' + (_ia?'الدرجة':'Score') + '</th><th>' + T.feedback + '</th><th>' + T.when + '</th></tr></thead>';
+  nh += '<tbody><tr><td>' + npsBadge + '</td>'
+    + '<td style="font-size:12px;color:var(--ink-mid);">' + (npsCm ? npsCm.replace(/</g,'&lt;') : '—') + '</td>'
+    + '<td style="font-size:12px;color:var(--ink-light);">' + npsWhen + '</td></tr></tbody></table></div>';
+  npsBox.innerHTML = nh;
 }
 
 
