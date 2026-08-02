@@ -948,6 +948,9 @@ Explicit or implied requests
 **Sentiment**
 Positive / Neutral / Negative — brief reason
 
+**Tone of Voice**
+Describe the client's emotional register as expressed in their language (calm, frustrated, enthusiastic, hesitant, impatient, etc.). Note any shifts across the conversation and quote a short phrase that signals it. Base this only on the wording, since only the transcript is available.
+
 **Signals to Watch**
 Hesitation, confusion, repeated issues, urgency
 
@@ -958,7 +961,7 @@ The 2–3 most important follow-ups or fixes
 Low / Medium / High — based on how complete the information is`,
         messages: [{
           role: 'user',
-          content: 'Analyze this client feedback session transcript:\n\n' + transcript
+          content: 'Analyze this client feedback session transcript:\n\n' + (function(t){t=(t||'').toString();return t.length>12000?t.slice(t.length-12000):(t.trim()||'[No transcript text was captured.]');})(transcript)
         }]
       })
     });
