@@ -528,6 +528,9 @@ html[lang="ar"] .voice-timer { text-align:left; }
   <!-- ONBOARDING RATINGS (from email one-click links, stored in Upstash) -->
   <div id="onboardingRatings"></div>
 
+  <!-- NPS SUMMARY (from email 0-10 links, stored in Upstash) -->
+  <div id="npsSummary"></div>
+
   <div id="analyticsBody">
     <div class="empty-state"><div class="empty-state-icon">📋</div><p data-en="No sessions recorded yet.<br>Complete and save your first session to see analytics." data-ar="لا توجد جلسات مسجلة بعد.<br>أكمل وحفظ جلستك الأولى لعرض التحليلات.">No sessions recorded yet.<br>Complete and save your first session to see analytics.</p></div>
   </div>
@@ -957,7 +960,7 @@ function showView(v) {
   document.getElementById('view-'+v).classList.add('active');
   const tabMap = {select:0, session:1, clients:2, analytics:3};
   document.querySelectorAll('.nav-tab')[tabMap[v] ?? 0]?.classList.add('active');
-  if (v === 'analytics') { renderAnalytics(); renderOnboardingRatings(); }
+  if (v === 'analytics') { renderAnalytics(); renderOnboardingRatings(); renderNpsSummary(); }
   if (v === 'clients') renderClientsDirectory();
   if (v === 'session') document.getElementById('view-session').scrollIntoView({behavior:'smooth',block:'start'});
 }
@@ -1369,6 +1372,102 @@ function renderOnboardingRatings() {
             .catch(function () { btn.disabled = false; btn.textContent = T.del; });
         });
       });
+    })
+    .catch(function (err) {
+      box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
+        + '<div style="color:var(--danger);font-size:13px;padding:.5rem 0;">' + T.error + ': ' + err.message + '</div>';
+    });
+}
+
+
+// ─── NPS SUMMARY (dashboard) ─────────────────────────────────────────────────
+function renderNpsSummary() {
+  var box = document.getElementById('npsSummary');
+  if (!box) return;
+  var _ia = currentLang === 'ar';
+
+  var T = {
+    header:  _ia ? 'صافي نقاط الترويج (NPS)' : 'Net Promoter Score (NPS)',
+    loading: _ia ? 'جارٍ التحميل…' : 'Loading…',
+    empty:   _ia ? 'لا توجد نتائج NPS بعد.' : 'No NPS responses yet.',
+    promoters: _ia ? 'المروّجون (9-10)' : 'Promoters (9–10)',
+    passives:  _ia ? 'المحايدون (7-8)' : 'Passives (7–8)',
+    detractors:_ia ? 'المنتقدون (0-6)' : 'Detractors (0–6)',
+    npsScore:  _ia ? 'درجة NPS' : 'NPS Score',
+    responses: _ia ? 'الردود' : 'Responses',
+    latest:   _ia ? 'أحدث درجات NPS حسب العميل' : 'Latest NPS by client',
+    clientTh: _ia ? 'العميل' : 'Client',
+    scoreTh:  _ia ? 'الدرجة' : 'Score',
+    catTh:    _ia ? 'الفئة' : 'Category',
+    feedbackTh:_ia ? 'ملاحظات' : 'Feedback',
+    whenTh:   _ia ? 'التاريخ' : 'When',
+    error:    _ia ? 'تعذّر تحميل NPS' : 'Could not load NPS'
+  };
+
+  box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
+    + '<div style="color:var(--ink-light);font-size:13px;padding:.5rem 0;">' + T.loading + '</div>';
+
+  var catLabel = { promoter: (_ia?'مروّج':'Promoter'), passive: (_ia?'محايد':'Passive'), detractor: (_ia?'منتقد':'Detractor') };
+  var catCls   = { promoter: 'score-hi', passive: 'score-mid', detractor: 'score-lo' };
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  fetch('/api/ratings')
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var nps = (data && data.nps) ? data.nps : [];
+      var npsComments = (data && data.npsComments) ? data.npsComments : {};
+      if (!nps.length) {
+        box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
+          + '<div class="empty-state" style="padding:2rem 1rem;"><div class="empty-state-icon">📊</div><p>' + T.empty + '</p></div>';
+        return;
+      }
+
+      var promoters = 0, passives = 0, detractors = 0;
+      var latestByClient = {};
+      nps.forEach(function (rt) {
+        var v = (typeof rt.value === 'number') ? rt.value : parseInt(rt.score, 10);
+        var cat = rt.category || (v >= 9 ? 'promoter' : v >= 7 ? 'passive' : 'detractor');
+        if (cat === 'promoter') promoters++; else if (cat === 'passive') passives++; else detractors++;
+        if (!latestByClient[rt.client]) latestByClient[rt.client] = rt;
+      });
+      var total = promoters + passives + detractors;
+      // NPS = %promoters - %detractors  (range -100..100)
+      var npsScore = total ? Math.round((promoters / total * 100) - (detractors / total * 100)) : 0;
+
+      var h = '<div class="section-divider">' + T.header + '</div>';
+
+      // big score + breakdown cards
+      h += '<div class="stat-grid">';
+      h += '<div class="stat-card"><div class="stat-val">' + (npsScore > 0 ? '+' : '') + npsScore + '</div><div class="stat-lbl">' + T.npsScore + '</div></div>';
+      h += '<div class="stat-card"><div class="stat-val">' + promoters + '</div><div class="stat-lbl">🟢 ' + T.promoters + '</div></div>';
+      h += '<div class="stat-card"><div class="stat-val">' + passives + '</div><div class="stat-lbl">🟡 ' + T.passives + '</div></div>';
+      h += '<div class="stat-card"><div class="stat-val">' + detractors + '</div><div class="stat-lbl">🔴 ' + T.detractors + '</div></div>';
+      h += '</div>';
+
+      // per-client NPS table
+      var rows = Object.keys(latestByClient).map(function (client) {
+        var rt = latestByClient[client];
+        var v = (typeof rt.value === 'number') ? rt.value : parseInt(rt.score, 10);
+        var cat = rt.category || (v >= 9 ? 'promoter' : v >= 7 ? 'passive' : 'detractor');
+        var when = rt.ratedAt ? new Date(rt.ratedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+        var cm = npsComments[client] && npsComments[client].comment ? npsComments[client].comment : '';
+        var badge = '<span class="score-badge ' + (catCls[cat]||'') + '" style="width:auto;padding:0 10px;">' + (catLabel[cat]||cat) + '</span>';
+        return '<tr>'
+          + '<td><strong style="font-size:13px;">' + esc(client) + '</strong></td>'
+          + '<td style="font-weight:bold;">' + v + '</td>'
+          + '<td>' + badge + '</td>'
+          + '<td style="max-width:220px;font-size:12px;color:var(--ink-mid);">' + (cm ? esc(cm) : '—') + '</td>'
+          + '<td style="font-size:12px;color:var(--ink-light);">' + when + '</td>'
+          + '</tr>';
+      }).join('');
+
+      h += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);margin:.75rem 0 .5rem;">' + T.latest + '</div>';
+      h += '<div style="overflow-x:auto;"><table class="sessions-table">';
+      h += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.scoreTh + '</th><th>' + T.catTh + '</th><th>' + T.feedbackTh + '</th><th>' + T.whenTh + '</th></tr></thead>';
+      h += '<tbody>' + rows + '</tbody></table></div>';
+
+      box.innerHTML = h;
     })
     .catch(function (err) {
       box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
