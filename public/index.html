@@ -394,7 +394,7 @@ html[lang="ar"] .voice-timer { text-align:left; }
       <div id="analysisText" style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.75;white-space:pre-wrap;"></div>
       <div id="transcriptPanel" style="display:none;margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(255,255,255,.1);">
         <div style="font-size:11px;color:rgba(255,255,255,.4);margin-bottom:.5rem;letter-spacing:.06em;text-transform:uppercase;" data-en="Full transcript" data-ar="النص الكامل">Full transcript</div>
-        <div id="transcriptText" style="font-size:12px;color:rgba(255,255,255,.5);line-height:1.65;white-space:pre-wrap;max-height:160px;overflow-y:auto;"></div>
+        <div id="transcriptText" style="font-size:12px;color:rgba(255,255,255,.85);line-height:1.7;white-space:pre-wrap;max-height:220px;overflow-y:auto;background:rgba(255,255,255,.04);border-radius:6px;padding:10px;"></div>
       </div>
     </div>
   </div>
@@ -1016,7 +1016,18 @@ function blobToBase64(blob) {
 
 function toggleTranscript() {
   const p = document.getElementById('transcriptPanel');
-  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  if (!p) return;
+  const tt = document.getElementById('transcriptText');
+  // If the panel is empty, show a helpful note instead of a blank box.
+  if (tt && !tt.textContent.trim()) {
+    tt.textContent = (currentLang === 'ar')
+      ? 'لا يوجد نص متاح بعد. سجّل جلسة أولاً.'
+      : 'No transcript available yet. Record a session first.';
+  }
+  const showing = (p.style.display !== 'none');
+  p.style.display = showing ? 'none' : 'block';
+  // scroll it into view when opening
+  if (!showing) { try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(_){} }
 }
 
 function copyAnalysis() {
