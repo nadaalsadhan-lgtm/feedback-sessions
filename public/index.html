@@ -1279,6 +1279,7 @@ function renderOnboardingRatings() {
     whenTh:  _ia ? 'التاريخ' : 'When',
     feedbackTh: _ia ? 'الملاحظات' : 'Feedback',
     actionsTh: _ia ? 'إجراءات' : 'Actions',
+    edit:    _ia ? 'تعديل' : 'Edit',
     del:     _ia ? 'حذف' : 'Delete',
     confirmDel: _ia ? 'حذف تقييم هذا العميل؟' : 'Delete this client\u2019s rating?',
     noComment: _ia ? '—' : '—',
@@ -1337,6 +1338,9 @@ function renderOnboardingRatings() {
         const cmCell = cm
           ? '<span style="font-size:12px;color:var(--ink-mid);">' + esc(cm) + '</span>'
           : '<span style="font-size:12px;color:var(--ink-light);">' + T.noComment + '</span>';
+        const editBtn = '<button type="button" class="onb-edit" data-client="' + esc(client)
+          + '" data-score="' + esc(rt.score) + '" data-comment="' + esc(cm) + '"'
+          + ' style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;margin-inline-end:6px;">' + T.edit + '</button>';
         const delBtn = '<button type="button" class="onb-del" data-client="' + esc(client)
           + '" style="border:1px solid var(--rule);background:transparent;color:var(--danger);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;">' + T.del + '</button>';
         return '<tr>'
@@ -1345,7 +1349,7 @@ function renderOnboardingRatings() {
           + '<td>' + badge + '</td>'
           + '<td style="max-width:220px;">' + cmCell + '</td>'
           + '<td style="font-size:12px;color:var(--ink-light);">' + when + '</td>'
-          + '<td>' + delBtn + '</td>'
+          + '<td style="white-space:nowrap;">' + editBtn + delBtn + '</td>'
           + '</tr>';
       }).join('');
 
@@ -1370,6 +1374,34 @@ function renderOnboardingRatings() {
             .then(function (r) { return r.json(); })
             .then(function () { renderOnboardingRatings(); })
             .catch(function () { btn.disabled = false; btn.textContent = T.del; });
+        });
+      });
+
+      // wire up edit buttons (onboarding)
+      box.querySelectorAll('.onb-edit').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          const client = btn.getAttribute('data-client');
+          const curScore = btn.getAttribute('data-score') || '';
+          const curComment = btn.getAttribute('data-comment') || '';
+          const newScore = window.prompt(
+            (_ia ? 'التقييم لـ ' : 'Rating for ') + client + ' — easy / neutral / difficult:', curScore);
+          if (newScore === null) return; // cancelled
+          const s = newScore.trim().toLowerCase();
+          if (['easy','neutral','difficult'].indexOf(s) === -1) {
+            window.alert(_ia ? 'أدخل: easy أو neutral أو difficult' : 'Enter: easy, neutral, or difficult'); return;
+          }
+          const newComment = window.prompt(
+            (_ia ? 'الملاحظات (اتركها فارغة للحذف):' : 'Feedback (leave empty to clear):'), curComment);
+          if (newComment === null) return;
+          btn.disabled = true; btn.textContent = '…';
+          fetch('/api/update-rating', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ client: client, metric: 'onboarding_effort', score: s, comment: newComment })
+          })
+            .then(function (r) { return r.json(); })
+            .then(function () { renderOnboardingRatings(); })
+            .catch(function () { btn.disabled = false; btn.textContent = T.edit; });
         });
       });
     })
@@ -1453,21 +1485,59 @@ function renderNpsSummary() {
         var when = rt.ratedAt ? new Date(rt.ratedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
         var cm = npsComments[client] && npsComments[client].comment ? npsComments[client].comment : '';
         var badge = '<span class="score-badge ' + (catCls[cat]||'') + '" style="width:auto;padding:0 10px;">' + (catLabel[cat]||cat) + '</span>';
+        var editBtn = '<button type="button" class="nps-edit" data-client="' + esc(client) + '" data-score="' + v + '" data-comment="' + esc(cm) + '"'
+          + ' style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;margin-inline-end:6px;">' + (_ia?'تعديل':'Edit') + '</button>';
+        var delBtn = '<button type="button" class="nps-del" data-client="' + esc(client) + '"'
+          + ' style="border:1px solid var(--rule);background:transparent;color:var(--danger);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;">' + (_ia?'حذف':'Delete') + '</button>';
         return '<tr>'
           + '<td><strong style="font-size:13px;">' + esc(client) + '</strong></td>'
           + '<td style="font-weight:bold;">' + v + '</td>'
           + '<td>' + badge + '</td>'
           + '<td style="max-width:220px;font-size:12px;color:var(--ink-mid);">' + (cm ? esc(cm) : '—') + '</td>'
           + '<td style="font-size:12px;color:var(--ink-light);">' + when + '</td>'
+          + '<td style="white-space:nowrap;">' + editBtn + delBtn + '</td>'
           + '</tr>';
       }).join('');
 
       h += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);margin:.75rem 0 .5rem;">' + T.latest + '</div>';
       h += '<div style="overflow-x:auto;"><table class="sessions-table">';
-      h += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.scoreTh + '</th><th>' + T.catTh + '</th><th>' + T.feedbackTh + '</th><th>' + T.whenTh + '</th></tr></thead>';
+      h += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.scoreTh + '</th><th>' + T.catTh + '</th><th>' + T.feedbackTh + '</th><th>' + T.whenTh + '</th><th>' + (_ia?'إجراءات':'Actions') + '</th></tr></thead>';
       h += '<tbody>' + rows + '</tbody></table></div>';
 
       box.innerHTML = h;
+
+      // wire NPS delete
+      box.querySelectorAll('.nps-del').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var client = btn.getAttribute('data-client');
+          if (!window.confirm((_ia?'حذف NPS لـ ':'Delete NPS for ') + client + '?')) return;
+          btn.disabled = true; btn.textContent = '…';
+          fetch('/api/delete-rating', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ client: client, metric: 'nps' }) })
+            .then(function(r){return r.json();}).then(function(){ renderNpsSummary(); })
+            .catch(function(){ btn.disabled=false; btn.textContent=(_ia?'حذف':'Delete'); });
+        });
+      });
+
+      // wire NPS edit
+      box.querySelectorAll('.nps-edit').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var client = btn.getAttribute('data-client');
+          var curScore = btn.getAttribute('data-score') || '';
+          var curComment = btn.getAttribute('data-comment') || '';
+          var ns = window.prompt((_ia?'درجة NPS لـ ':'NPS score for ') + client + ' (0–10):', curScore);
+          if (ns === null) return;
+          var num = parseInt(ns, 10);
+          if (isNaN(num) || num < 0 || num > 10) { window.alert(_ia?'أدخل رقمًا من 0 إلى 10':'Enter a number 0–10'); return; }
+          var nc = window.prompt((_ia?'الملاحظات (اتركها فارغة للحذف):':'Feedback (leave empty to clear):'), curComment);
+          if (nc === null) return;
+          btn.disabled = true; btn.textContent = '…';
+          fetch('/api/update-rating', { method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ client: client, metric: 'nps', score: String(num), comment: nc }) })
+            .then(function(r){return r.json();}).then(function(){ renderNpsSummary(); })
+            .catch(function(){ btn.disabled=false; btn.textContent=(_ia?'تعديل':'Edit'); });
+        });
+      });
     })
     .catch(function (err) {
       box.innerHTML = '<div class="section-divider">' + T.header + '</div>'
