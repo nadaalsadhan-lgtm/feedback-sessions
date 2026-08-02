@@ -1440,16 +1440,22 @@ function renderAnalytics() {
   ];
 
   let html = '';
-  html += '<div class="stat-grid">';
-  html += '<div class="stat-card"><div class="stat-val">' + sessions.length + '</div><div class="stat-lbl">' + T.sessionsRecorded + '</div></div>';
-  html += '<div class="stat-card"><div class="stat-val">' + avgOverall + '<span style="font-size:1rem;color:var(--ink-light)">/10</span></div><div class="stat-lbl">' + T.avgNps + '</div></div>';
-  html += '<div class="stat-card"><div class="stat-val">' + avgWR + '<span style="font-size:1rem;color:var(--ink-light)">/5</span></div><div class="stat-lbl">' + T.workingRel + '</div></div>';
-  html += '<div class="stat-card"><div class="stat-val">' + avgSP + '<span style="font-size:1rem;color:var(--ink-light)">/5</span></div><div class="stat-lbl">' + T.support + '</div></div>';
-  html += '<div class="stat-card"><div class="stat-val">' + avgVF + '<span style="font-size:1rem;color:var(--ink-light)">/5</span></div><div class="stat-lbl">' + T.valuefit + '</div></div>';
-  html += '<div class="stat-card"><div class="stat-val">' + avgFD + '<span style="font-size:1rem;color:var(--ink-light)">/5</span></div><div class="stat-lbl">' + T.frictionScore + '</div></div>';
+  html += '<div class="fb-block">';
+  html += '<div class="fb-block-head">'
+    + '<div class="fb-block-badge" style="background:var(--accent-both-light);">🎙️</div>'
+    + '<div><div class="fb-block-title">' + (_ia?'جلسات التغذية الراجعة':'Feedback Sessions') + '</div>'
+    + '<div class="fb-block-sub">' + sessions.length + ' ' + (_ia?'جلسة مسجلة':'recorded') + ' · ' + (_ia?'مقابلات مباشرة':'in-app & imported') + '</div></div></div>';
+
+  html += '<div class="fb-metrics">';
+  html += '<div class="fb-metric"><div class="fb-metric-num">' + sessions.length + '</div><div class="fb-metric-lbl">' + T.sessionsRecorded + '</div></div>';
+  html += '<div class="fb-metric"><div class="fb-metric-num">' + avgOverall + '<span style="font-size:.7em;color:var(--ink-light)">/10</span></div><div class="fb-metric-lbl">' + T.avgNps + '</div></div>';
+  html += '<div class="fb-metric"><div class="fb-metric-num">' + avgWR + '<span style="font-size:.7em;color:var(--ink-light)">/5</span></div><div class="fb-metric-lbl">' + T.workingRel + '</div></div>';
+  html += '<div class="fb-metric"><div class="fb-metric-num">' + avgSP + '<span style="font-size:.7em;color:var(--ink-light)">/5</span></div><div class="fb-metric-lbl">' + T.support + '</div></div>';
+  html += '<div class="fb-metric"><div class="fb-metric-num">' + avgVF + '<span style="font-size:.7em;color:var(--ink-light)">/5</span></div><div class="fb-metric-lbl">' + T.valuefit + '</div></div>';
+  html += '<div class="fb-metric"><div class="fb-metric-num">' + avgFD + '<span style="font-size:.7em;color:var(--ink-light)">/5</span></div><div class="fb-metric-lbl">' + T.frictionScore + '</div></div>';
   html += '</div>';
 
-  html += '<div class="section-divider">' + T.scoreBreakdown + '</div>';
+  html += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);text-transform:uppercase;margin:1rem 0 .75rem;">' + T.scoreBreakdown + '</div>';
   html += '<div class="bar-chart">';
   if (avgWR !== '-') html += '<div class="bar-row"><span class="bar-label">' + T.workingRelBar + '</span><div class="bar-track"><div class="bar-fill" style="width:' + barW(avgWR,5) + '%;background:' + barColor(avgWR,5) + ';"></div></div><span class="bar-score">' + avgWR + '/5</span></div>';
   if (avgSP !== '-') html += '<div class="bar-row"><span class="bar-label">' + T.supportBar + '</span><div class="bar-track"><div class="bar-fill" style="width:' + barW(avgSP,5) + '%;background:' + barColor(avgSP,5) + ';"></div></div><span class="bar-score">' + avgSP + '/5</span></div>';
@@ -1457,6 +1463,7 @@ function renderAnalytics() {
   if (avgFD !== '-') html += '<div class="bar-row"><span class="bar-label">' + T.frictionBar + '</span><div class="bar-track"><div class="bar-fill" style="width:' + barW(avgFD,5) + '%;background:' + barColor(6-avgFD,5) + ';"></div></div><span class="bar-score">' + avgFD + '/5</span></div>';
   if (avgOverall !== '-') html += '<div class="bar-row"><span class="bar-label">' + T.npsBar + '</span><div class="bar-track"><div class="bar-fill" style="width:' + barW(avgOverall,10) + '%;background:' + barColor(avgOverall,10) + ';"></div></div><span class="bar-score">' + avgOverall + '/10</span></div>';
   html += '</div>';
+  html += '</div>'; // close .fb-block
 
   html += '<div class="section-divider">' + T.aiAgent + '</div>';
   html += '<div class="agent-box"><div class="agent-head"><div class="agent-dot"></div><div class="agent-head-text">' + T.analysisAgent + '</div><div class="agent-head-sub">' + T.poweredBy + '</div></div>';
