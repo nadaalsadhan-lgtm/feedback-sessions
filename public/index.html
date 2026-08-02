@@ -208,6 +208,49 @@ body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);f
 
 .section-divider{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-light);padding:.5rem 0;margin:1.5rem 0 .75rem;border-top:1px solid var(--rule);font-weight:500;}
 
+/* ─── Enhanced Analytics feedback-type blocks ─────────────────────── */
+.fb-block{background:var(--paper-card);border:1px solid var(--rule);border-radius:14px;padding:1.4rem 1.5rem;margin-bottom:1.5rem;}
+.fb-block-head{display:flex;align-items:center;gap:.7rem;margin-bottom:1.1rem;}
+.fb-block-badge{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.fb-block-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--ink);line-height:1;}
+.fb-block-sub{font-size:12px;color:var(--ink-light);margin-top:2px;}
+.fb-hero{display:flex;align-items:baseline;gap:.5rem;margin:.3rem 0 1rem;}
+.fb-hero-num{font-family:'DM Serif Display',serif;font-size:44px;line-height:1;color:var(--ink);}
+.fb-hero-lbl{font-size:12px;color:var(--ink-light);letter-spacing:.04em;}
+.fb-metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.6rem;margin-bottom:1.1rem;}
+.fb-metric{border:1px solid var(--rule);border-radius:10px;padding:.75rem .9rem;background:var(--paper);}
+.fb-metric-num{font-family:'DM Serif Display',serif;font-size:24px;line-height:1;color:var(--ink);}
+.fb-metric-lbl{font-size:11px;color:var(--ink-light);margin-top:4px;letter-spacing:.02em;}
+.fb-metric.tone-hi{border-color:#bfe3c4;background:var(--success-light);}
+.fb-metric.tone-mid{border-color:#f0dfa8;background:#fffbee;}
+.fb-metric.tone-lo{border-color:#f2c9c4;background:var(--danger-light);}
+.fb-bar{height:8px;border-radius:5px;overflow:hidden;display:flex;margin:.4rem 0 1rem;background:var(--paper-warm);}
+.fb-bar > span{display:block;height:100%;}
+
+/* ─── Rich AI analysis report ─────────────────────────────────────── */
+.report{border:1px solid rgba(255,255,255,.14);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);}
+.report-sec{padding:.85rem 1.1rem;border-bottom:1px solid rgba(255,255,255,.08);}
+.report-sec:last-child{border-bottom:none;}
+.report-sec-head{display:flex;align-items:center;gap:.55rem;margin-bottom:.5rem;}
+.report-ico{width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;}
+.report-sec-title{font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600;color:rgba(255,255,255,.92);}
+.report-body{font-size:13px;line-height:1.7;color:rgba(255,255,255,.82);}
+.report-body .rb-bullet{display:block;padding-left:16px;position:relative;margin:3px 0;}
+.report-body .rb-bullet::before{content:'';position:absolute;left:2px;top:9px;width:5px;height:5px;border-radius:50%;background:var(--gold);}
+.tagchip{display:inline-block;font-size:11px;font-weight:600;padding:2px 10px;border-radius:20px;letter-spacing:.02em;}
+.tag-pos{background:rgba(120,200,140,.18);color:#8fe0a4;}
+.tag-neu{background:rgba(210,190,120,.18);color:#e6cf8a;}
+.tag-neg{background:rgba(220,120,110,.18);color:#f0a89e;}
+/* light-theme variant used on the client page (dark text) */
+.report.on-paper{border:1px solid var(--rule);background:var(--paper-card);}
+.report.on-paper .report-sec{border-bottom:1px solid var(--rule);}
+.report.on-paper .report-sec-title{color:var(--ink-mid);}
+.report.on-paper .report-body{color:var(--ink);}
+.report.on-paper .tag-pos{background:var(--success-light);color:var(--success);}
+.report.on-paper .tag-neu{background:#fff8e6;color:#7a5500;}
+.report.on-paper .tag-neg{background:var(--danger-light);color:var(--danger);}
+
+
 /* AI AGENT */
 .agent-box{border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-bottom:1.5rem;}
 .agent-head{background:var(--ink);color:white;padding:1rem 1.4rem;display:flex;align-items:center;gap:10px;}
@@ -978,13 +1021,17 @@ Low / Medium / High — based on how complete the information is`,
     showProc(isAr ? 'تم!' : 'Done!', 100, isAr ? 'اكتمل التحليل' : 'Analysis complete');
     setTimeout(() => { const pb = document.getElementById('procBar'); if(pb) pb.classList.remove('show'); }, 1800);
 
-    // Render with markdown formatting
-    const rendered = analysis
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-      .replace(/^- (.+)$/gm, '<span style="display:block;padding-left:14px;margin:2px 0;">• $1</span>')
-      .replace(/\n{2,}/g, '<br><br>')
-      .replace(/\n/g, '<br>');
+    // Render as a rich, structured report (falls back to plain if parsing fails)
+    var rendered;
+    try { rendered = renderReport(analysis, false); } catch(_) { rendered = ''; }
+    if (!rendered) {
+      rendered = analysis
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/^- (.+)$/gm, '<span style="display:block;padding-left:14px;margin:2px 0;">• $1</span>')
+        .replace(/\n{2,}/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+    }
 
     const at = document.getElementById('analysisText');
     const ao = document.getElementById('analysisOutput');
@@ -1028,6 +1075,73 @@ function toggleTranscript() {
   p.style.display = showing ? 'none' : 'block';
   // scroll it into view when opening
   if (!showing) { try { p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch(_){} }
+}
+
+// ─── RICH AI REPORT RENDERER ─────────────────────────────────────────────────
+// Turns the model's **Section**\n content markdown into a styled report with
+// per-section icons and sentiment/tone tags. onPaper=true for light client page.
+function renderReport(analysisText, onPaper) {
+  if (!analysisText || !analysisText.trim()) return '';
+  var esc = function (s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+
+  // icon + accent per known section heading (matched loosely, case-insensitive)
+  var META = [
+    { re:/live summary|summary/i,            ico:'📝', bg:'rgba(201,168,76,.18)' },
+    { re:/pain point/i,                      ico:'⚠️', bg:'rgba(220,120,110,.16)' },
+    { re:/feature request|needs/i,           ico:'💡', bg:'rgba(120,170,220,.16)' },
+    { re:/sentiment/i,                       ico:'❤️', bg:'rgba(120,200,140,.16)' },
+    { re:/tone of voice|tone/i,              ico:'🎙️', bg:'rgba(180,140,210,.16)' },
+    { re:/signals to watch|signals/i,        ico:'🔎', bg:'rgba(210,190,120,.16)' },
+    { re:/what to act on|act on|action/i,    ico:'✅', bg:'rgba(120,200,140,.16)' },
+    { re:/confidence/i,                      ico:'📊', bg:'rgba(160,160,160,.16)' }
+  ];
+  function metaFor(title){ for(var i=0;i<META.length;i++){ if(META[i].re.test(title)) return META[i]; } return { ico:'•', bg:'rgba(200,200,200,.14)' }; }
+
+  // sentiment/tone tag coloring
+  function tagify(body){
+    return body
+      .replace(/\b(Positive)\b/gi,'<span class="tagchip tag-pos">$1</span>')
+      .replace(/\b(Neutral)\b/gi,'<span class="tagchip tag-neu">$1</span>')
+      .replace(/\b(Negative)\b/gi,'<span class="tagchip tag-neg">$1</span>')
+      .replace(/\b(High)\b/g,'<span class="tagchip tag-neg">High</span>')
+      .replace(/\b(Medium)\b/g,'<span class="tagchip tag-neu">Medium</span>')
+      .replace(/\b(Low)\b/g,'<span class="tagchip tag-pos">Low</span>');
+  }
+
+  function fmtBody(raw){
+    var lines = raw.split('\n');
+    var out = '';
+    for (var i=0;i<lines.length;i++){
+      var ln = lines[i].trim();
+      if (!ln) continue;
+      var b = esc(ln).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+      if (/^[-*]\s+/.test(ln)) {
+        out += '<span class="rb-bullet">' + tagify(b.replace(/^[-*]\s+/,'')) + '</span>';
+      } else {
+        out += '<div style="margin:3px 0;">' + tagify(b) + '</div>';
+      }
+    }
+    return out;
+  }
+
+  // split into **Heading** blocks
+  var text = analysisText.replace(/\r/g,'');
+  var parts = text.split(/\n(?=\*\*[^*]+\*\*)/g);
+  var secs = '';
+  for (var p=0;p<parts.length;p++){
+    var block = parts[p].trim();
+    if (!block) continue;
+    var hm = block.match(/^\*\*(.+?)\*\*([\s\S]*)$/);
+    var title, rest;
+    if (hm){ title = hm[1].trim(); rest = hm[2].trim(); }
+    else { title = ''; rest = block; }
+    var m = metaFor(title);
+    secs += '<div class="report-sec">'
+      + (title ? ('<div class="report-sec-head"><div class="report-ico" style="background:' + m.bg + ';">' + m.ico + '</div>'
+        + '<div class="report-sec-title">' + esc(title) + '</div></div>') : '')
+      + '<div class="report-body">' + fmtBody(rest) + '</div></div>';
+  }
+  return '<div class="report' + (onPaper?' on-paper':'') + '">' + secs + '</div>';
 }
 
 function copyAnalysis() {
@@ -1435,14 +1549,30 @@ function renderOnboardingRatings() {
         if (!latestByClient[rt.client]) latestByClient[rt.client] = rt; // newest-first
       });
       const avg = n ? (sum / n).toFixed(2) : '—';
+      const totalResp = counts.easy + counts.neutral + counts.difficult;
+      const pct = function(x){ return totalResp ? Math.round(x/totalResp*100) : 0; };
 
-      let h = '<div class="section-divider">' + T.header + '</div>';
+      let h = '<div class="fb-block">'
+        + '<div class="fb-block-head">'
+        + '<div class="fb-block-badge" style="background:var(--accent-hyrdd-light);">🚀</div>'
+        + '<div><div class="fb-block-title">' + (_ia?'تجربة الانضمام':'Onboarding Experience') + '</div>'
+        + '<div class="fb-block-sub">' + totalResp + ' ' + (_ia?'رد':'responses') + ' · ' + (_ia?'مقياس الجهد':'effort scale') + '</div></div></div>';
 
-      h += '<div class="stat-grid">';
-      h += '<div class="stat-card"><div class="stat-val">' + counts.easy + '</div><div class="stat-lbl">🙂 ' + T.easy + '</div></div>';
-      h += '<div class="stat-card"><div class="stat-val">' + counts.neutral + '</div><div class="stat-lbl">😐 ' + T.neutral + '</div></div>';
-      h += '<div class="stat-card"><div class="stat-val">' + counts.difficult + '</div><div class="stat-lbl">🙁 ' + T.difficult + '</div></div>';
-      h += '<div class="stat-card"><div class="stat-val">' + avg + '</div><div class="stat-lbl">' + T.avg + '</div></div>';
+      // hero: average effort
+      h += '<div class="fb-hero"><div class="fb-hero-num">' + avg + '</div>'
+        + '<div class="fb-hero-lbl">' + (_ia?'متوسط الجهد (1-3)':'avg effort (1–3)') + '</div></div>';
+
+      // proportion bar (easy/neutral/difficult)
+      h += '<div class="fb-bar">'
+        + '<span style="width:' + pct(counts.easy) + '%;background:var(--success);"></span>'
+        + '<span style="width:' + pct(counts.neutral) + '%;background:#d9b64a;"></span>'
+        + '<span style="width:' + pct(counts.difficult) + '%;background:var(--danger);"></span></div>';
+
+      // metric cards
+      h += '<div class="fb-metrics">';
+      h += '<div class="fb-metric tone-hi"><div class="fb-metric-num">' + counts.easy + '</div><div class="fb-metric-lbl">🙂 ' + T.easy + ' · ' + pct(counts.easy) + '%</div></div>';
+      h += '<div class="fb-metric tone-mid"><div class="fb-metric-num">' + counts.neutral + '</div><div class="fb-metric-lbl">😐 ' + T.neutral + ' · ' + pct(counts.neutral) + '%</div></div>';
+      h += '<div class="fb-metric tone-lo"><div class="fb-metric-num">' + counts.difficult + '</div><div class="fb-metric-lbl">🙁 ' + T.difficult + ' · ' + pct(counts.difficult) + '%</div></div>';
       h += '</div>';
 
       const rows = Object.keys(latestByClient).map(function (client) {
@@ -1474,6 +1604,7 @@ function renderOnboardingRatings() {
       h += '<div style="overflow-x:auto;"><table class="sessions-table">';
       h += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.productTh + '</th><th>' + T.scoreTh + '</th><th>' + T.feedbackTh + '</th><th>' + T.whenTh + '</th><th>' + T.actionsTh + '</th></tr></thead>';
       h += '<tbody>' + rows + '</tbody></table></div>';
+      h += '</div>'; // close .fb-block
 
       box.innerHTML = h;
 
@@ -1583,15 +1714,27 @@ function renderNpsSummary() {
       var total = promoters + passives + detractors;
       // NPS = %promoters - %detractors  (range -100..100)
       var npsScore = total ? Math.round((promoters / total * 100) - (detractors / total * 100)) : 0;
+      var npct = function(x){ return total ? Math.round(x/total*100) : 0; };
+      var scoreColor = npsScore >= 50 ? 'var(--success)' : npsScore >= 0 ? '#b8901f' : 'var(--danger)';
 
-      var h = '<div class="section-divider">' + T.header + '</div>';
+      var h = '<div class="fb-block">'
+        + '<div class="fb-block-head">'
+        + '<div class="fb-block-badge" style="background:var(--accent-inviews-light);">📣</div>'
+        + '<div><div class="fb-block-title">' + (_ia?'صافي نقاط الترويج':'Net Promoter Score') + '</div>'
+        + '<div class="fb-block-sub">' + total + ' ' + (_ia?'رد':'responses') + ' · ' + (_ia?'مقياس 0-10':'0–10 scale') + '</div></div></div>';
 
-      // big score + breakdown cards
-      h += '<div class="stat-grid">';
-      h += '<div class="stat-card"><div class="stat-val">' + (npsScore > 0 ? '+' : '') + npsScore + '</div><div class="stat-lbl">' + T.npsScore + '</div></div>';
-      h += '<div class="stat-card"><div class="stat-val">' + promoters + '</div><div class="stat-lbl">🟢 ' + T.promoters + '</div></div>';
-      h += '<div class="stat-card"><div class="stat-val">' + passives + '</div><div class="stat-lbl">🟡 ' + T.passives + '</div></div>';
-      h += '<div class="stat-card"><div class="stat-val">' + detractors + '</div><div class="stat-lbl">🔴 ' + T.detractors + '</div></div>';
+      h += '<div class="fb-hero"><div class="fb-hero-num" style="color:' + scoreColor + ';">' + (npsScore > 0 ? '+' : '') + npsScore + '</div>'
+        + '<div class="fb-hero-lbl">' + (_ia?'درجة NPS (-100 إلى 100)':'NPS score (−100 to 100)') + '</div></div>';
+
+      h += '<div class="fb-bar">'
+        + '<span style="width:' + npct(promoters) + '%;background:var(--success);"></span>'
+        + '<span style="width:' + npct(passives) + '%;background:#d9b64a;"></span>'
+        + '<span style="width:' + npct(detractors) + '%;background:var(--danger);"></span></div>';
+
+      h += '<div class="fb-metrics">';
+      h += '<div class="fb-metric tone-hi"><div class="fb-metric-num">' + promoters + '</div><div class="fb-metric-lbl">🟢 ' + T.promoters + ' · ' + npct(promoters) + '%</div></div>';
+      h += '<div class="fb-metric tone-mid"><div class="fb-metric-num">' + passives + '</div><div class="fb-metric-lbl">🟡 ' + T.passives + ' · ' + npct(passives) + '%</div></div>';
+      h += '<div class="fb-metric tone-lo"><div class="fb-metric-num">' + detractors + '</div><div class="fb-metric-lbl">🔴 ' + T.detractors + ' · ' + npct(detractors) + '%</div></div>';
       h += '</div>';
 
       // per-client NPS table
@@ -1620,6 +1763,7 @@ function renderNpsSummary() {
       h += '<div style="overflow-x:auto;"><table class="sessions-table">';
       h += '<thead><tr><th>' + T.clientTh + '</th><th>' + T.scoreTh + '</th><th>' + T.catTh + '</th><th>' + T.feedbackTh + '</th><th>' + T.whenTh + '</th><th>' + (_ia?'إجراءات':'Actions') + '</th></tr></thead>';
       h += '<tbody>' + rows + '</tbody></table></div>';
+      h += '</div>'; // close .fb-block
 
       box.innerHTML = h;
 
@@ -1879,9 +2023,12 @@ function renderSessionsList(items, _ia, T) {
     if (hasDetail) {
       html += '<div id="' + did + '" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);">';
       if (s.analysis && s.analysis.trim()) {
-        html += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);text-transform:uppercase;margin-bottom:4px;">'
+        var rep = '';
+        try { rep = renderReport(s.analysis, true); } catch(_) { rep = ''; }
+        html += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);text-transform:uppercase;margin-bottom:6px;">'
           + (_ia?'تحليل الجلسة':'Session analysis') + '</div>'
-          + '<div style="font-size:13px;color:var(--ink);line-height:1.7;margin-bottom:12px;">' + _cpFmt(s.analysis) + '</div>';
+          + (rep || ('<div style="font-size:13px;color:var(--ink);line-height:1.7;margin-bottom:12px;">' + _cpFmt(s.analysis) + '</div>'))
+          + '<div style="height:12px;"></div>';
       }
       if (s.transcript && s.transcript.trim()) {
         html += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);text-transform:uppercase;margin-bottom:4px;">'
