@@ -1850,6 +1850,14 @@ function renderClientsDirectory() {
 }
 
 // ─── CLIENT PAGE (single client 360 view) ────────────────────────────────────
+// Client-page section header (icon badge + title), matching Analytics blocks.
+function cpHead(icon, bg, title, sub) {
+  return '<div class="fb-block-head">'
+    + '<div class="fb-block-badge" style="background:' + bg + ';">' + icon + '</div>'
+    + '<div><div class="fb-block-title">' + title + '</div>'
+    + (sub ? ('<div class="fb-block-sub">' + sub + '</div>') : '') + '</div></div>';
+}
+
 function openClientPage(name, group) {
   showView('clientpage');
   var body = document.getElementById('clientPageBody');
@@ -1875,18 +1883,20 @@ function openClientPage(name, group) {
     + '</div>'
     + '<p class="page-sub">' + (_ia ? 'جميع ملاحظات هذا العميل في مكان واحد.' : 'All feedback for this client in one place.') + '</p>';
 
-  // Container for async sections
-  h += '<div id="cp-onboarding"><div class="section-divider">' + T.onboarding + '</div>'
-    + '<div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div>';
+  // Onboarding block
+  h += '<div class="fb-block">' + cpHead('🚀','var(--accent-hyrdd-light)', T.onboarding, '')
+    + '<div id="cp-onboarding"><div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div></div>';
 
-  // In-app sessions (from localStorage) for this client
-  h += '<div id="cp-sessions"></div>';
+  // Feedback Sessions block (header rendered inside cp-sessions by renderClientSessions)
+  h += '<div class="fb-block"><div id="cp-sessions"></div></div>';
 
-  // Placeholders for future feedback types
-  h += '<div id="cp-nps"><div class="section-divider">NPS</div>'
-    + '<div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div>';
-  h += '<div class="section-divider">' + (_ia ? 'التدريب' : 'Training') + '</div>'
-    + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.comingSoon + '</div>';
+  // NPS block
+  h += '<div class="fb-block">' + cpHead('📣','var(--accent-inviews-light)', 'NPS', '')
+    + '<div id="cp-nps"><div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div></div>';
+
+  // Training block (placeholder)
+  h += '<div class="fb-block">' + cpHead('🎓','var(--accent-both-light)', (_ia?'التدريب':'Training'), '')
+    + '<div style="color:var(--ink-light);font-size:13px;">' + T.comingSoon + '</div></div>';
 
   body.innerHTML = h;
 
@@ -1909,15 +1919,13 @@ function openClientPage(name, group) {
       renderClientNps(data, target, _ia, T);
 
       if (!rt) {
-        box.innerHTML = '<div class="section-divider">' + T.onboarding + '</div>'
-          + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.noOnb + '</div>';
+        box.innerHTML = '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0;">' + T.noOnb + '</div>';
         return;
       }
       var when = rt.ratedAt ? new Date(rt.ratedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
       var cm = comments[rt.client] && comments[rt.client].comment ? comments[rt.client].comment : '';
       var badge = '<span class="score-badge ' + (scoreCls[rt.score]||'') + '" style="width:auto;padding:0 10px;">' + (scoreLabel[rt.score]||rt.score) + '</span>';
-      var html = '<div class="section-divider">' + T.onboarding + '</div>';
-      html += '<div style="overflow-x:auto;"><table class="sessions-table">';
+      var html = '<div style="overflow-x:auto;"><table class="sessions-table">';
       html += '<thead><tr><th>' + T.rating + '</th><th>' + T.feedback + '</th><th>' + T.when + '</th></tr></thead>';
       html += '<tbody><tr><td>' + badge + '</td>'
         + '<td style="font-size:12px;color:var(--ink-mid);">' + (cm ? cm.replace(/</g,'&lt;') : '—') + '</td>'
@@ -1926,8 +1934,7 @@ function openClientPage(name, group) {
     })
     .catch(function () {
       var box = document.getElementById('cp-onboarding');
-      if (box) box.innerHTML = '<div class="section-divider">' + T.onboarding + '</div>'
-        + '<div style="color:var(--ink-light);font-size:13px;">' + T.noOnb + '</div>';
+      if (box) box.innerHTML = '<div style="color:var(--ink-light);font-size:13px;">' + T.noOnb + '</div>';
     });
 
   // --- In-app feedback sessions for this client (from localStorage) ---
@@ -1940,11 +1947,13 @@ function renderClientSessions(name, _ia, T) {
   var sBox = document.getElementById('cp-sessions');
   if (!sBox) return;
 
-  // header with Import button
-  var head = '<div class="section-divider" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">'
-    + '<span>' + T.sessions + '</span>'
-    + '<button type="button" class="btn-sm" onclick="openFirefliesImport(' + JSON.stringify(name) + ')" '
-    + 'style="background:var(--ink);color:#fff;font-size:11px;padding:5px 12px;border-radius:6px;border:none;cursor:pointer;">'
+  // boxed header (icon badge + title) with Import button on the right
+  var head = '<div class="fb-block-head" style="justify-content:space-between;">'
+    + '<div style="display:flex;align-items:center;gap:.7rem;">'
+    + '<div class="fb-block-badge" style="background:var(--accent-both-light);">🎙️</div>'
+    + '<div class="fb-block-title">' + T.sessions + '</div></div>'
+    + '<button type="button" onclick="openFirefliesImport(' + JSON.stringify(name) + ')" '
+    + 'style="background:var(--ink);color:#fff;font-size:11px;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;">'
     + (_ia ? 'استيراد من Fireflies' : 'Import from Fireflies') + '</button></div>';
 
   sBox.innerHTML = head + '<div id="cp-sessions-list" style="color:var(--ink-light);font-size:13px;padding:.25rem 0;">' + (_ia?'جارٍ التحميل…':'Loading…') + '</div>';
@@ -2130,8 +2139,7 @@ function renderClientNps(data, target, _ia, T) {
     if ((npsArr[p].client || '').trim().toLowerCase() === target) { npsRt = npsArr[p]; break; }
   }
   if (!npsRt) {
-    npsBox.innerHTML = '<div class="section-divider">NPS</div>'
-      + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">'
+    npsBox.innerHTML = '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0;">'
       + (_ia ? 'لا يوجد تقييم NPS بعد.' : 'No NPS score yet.') + '</div>';
     return;
   }
@@ -2142,8 +2150,7 @@ function renderClientNps(data, target, _ia, T) {
   var npsWhen = npsRt.ratedAt ? new Date(npsRt.ratedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
   var npsCm = npsComments[npsRt.client] && npsComments[npsRt.client].comment ? npsComments[npsRt.client].comment : '';
   var npsBadge = '<span class="score-badge ' + (catCls[cat]||'') + '" style="width:auto;padding:0 10px;">' + val + ' · ' + (catLabel[cat]||cat) + '</span>';
-  var nh = '<div class="section-divider">NPS</div>';
-  nh += '<div style="overflow-x:auto;"><table class="sessions-table">';
+  var nh = '<div style="overflow-x:auto;"><table class="sessions-table">';
   nh += '<thead><tr><th>' + (_ia?'الدرجة':'Score') + '</th><th>' + T.feedback + '</th><th>' + T.when + '</th></tr></thead>';
   nh += '<tbody><tr><td>' + npsBadge + '</td>'
     + '<td style="font-size:12px;color:var(--ink-mid);">' + (npsCm ? npsCm.replace(/</g,'&lt;') : '—') + '</td>'
