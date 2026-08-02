@@ -1185,6 +1185,7 @@ function saveSession() {
     ratings,
     notes,
     voiceAnalysis: window._sessionAnalysis || null,
+    voiceTranscript: window._sessionTranscript || null,
     savedAt: new Date().toISOString()
   };
   // Replace if same client already has session
@@ -1807,7 +1808,9 @@ function renderClientSessions(name, _ia, T) {
           source: 'in_app',
           date: s.date || s.savedAt || '',
           title: (_ia?'جلسة داخل التطبيق':'In-app session'),
-          detail: (_ia?'الدرجة':'Score') + ': ' + ((s.overallScore!=null&&s.overallScore!=='')?s.overallScore:'—') + ' · ' + (s.conductedBy||'—')
+          detail: (_ia?'الدرجة':'Score') + ': ' + ((s.overallScore!=null&&s.overallScore!=='')?s.overallScore:'—') + ' · ' + (s.conductedBy||'—'),
+          analysis: s.voiceAnalysis || '',
+          transcript: s.voiceTranscript || ''
         };
       });
   } catch (e) {}
@@ -1822,7 +1825,9 @@ function renderClientSessions(name, _ia, T) {
           source: s.source || 'fireflies',
           date: s.date || s.at || '',
           title: s.title || (_ia?'جلسة Fireflies':'Fireflies session'),
-          detail: (s.summary ? String(s.summary).slice(0,140) : (s.text ? String(s.text).slice(0,140) + '…' : '—'))
+          detail: (s.summary ? String(s.summary).slice(0,120) : (_ia?'نص مستورد':'Imported transcript')),
+          analysis: s.analysis || s.summary || '',
+          transcript: s.text || ''
         };
       });
       renderSessionsList(mine.concat(att), _ia, T);
@@ -1832,6 +1837,16 @@ function renderClientSessions(name, _ia, T) {
     });
 }
 
+// escape helper for session detail content
+function _cpEsc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// turn **bold** and bullets into light HTML for the analysis block
+function _cpFmt(s){
+  return _cpEsc(s)
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/^\s*[-*]\s+(.+)$/gm,'<span style="display:block;padding-left:12px;">• $1</span>')
+    .replace(/\n{2,}/g,'<br><br>').replace(/\n/g,'<br>');
+}
+
 function renderSessionsList(items, _ia, T) {
   var list = document.getElementById('cp-sessions-list');
   if (!list) return;
@@ -1839,17 +1854,45 @@ function renderSessionsList(items, _ia, T) {
     list.innerHTML = '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.noSess + '</div>';
     return;
   }
-  // sort newest first
   items.sort(function (a,b) { return (b.date||'').localeCompare(a.date||''); });
   var srcLabel = { in_app: (_ia?'داخل التطبيق':'In-app'), fireflies: 'Fireflies' };
-  var rows = items.map(function (s) {
+
+  var html = '';
+  items.forEach(function (s, i) {
     var d = s.date ? new Date(s.date).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
     var tag = '<span style="font-size:10px;background:var(--paper-warm);border:1px solid var(--rule);border-radius:10px;padding:1px 8px;color:var(--ink-mid);">' + (srcLabel[s.source]||s.source) + '</span>';
-    return '<tr><td style="font-size:12px;white-space:nowrap;">' + d + '</td>'
-      + '<td>' + tag + '</td>'
-      + '<td style="font-size:12px;color:var(--ink-mid);">' + (s.title||'') + (s.detail?(' — ' + s.detail):'') + '</td></tr>';
-  }).join('');
-  list.innerHTML = '<div style="overflow-x:auto;"><table class="sessions-table"><thead><tr><th>' + T.when + '</th><th>' + (_ia?'المصدر':'Source') + '</th><th>' + (_ia?'التفاصيل':'Details') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    var hasDetail = (s.analysis && s.analysis.trim()) || (s.transcript && s.transcript.trim());
+    var did = 'cpsess_' + i;
+
+    html += '<div style="border:1px solid var(--rule);border-radius:10px;padding:12px 14px;margin-bottom:10px;background:var(--paper);">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">'
+      + '<div style="font-size:13px;"><strong>' + _cpEsc(s.title||'') + '</strong> &nbsp;' + tag
+      + '<div style="font-size:11px;color:var(--ink-light);margin-top:2px;">' + d + (s.detail?(' · ' + _cpEsc(s.detail)):'') + '</div></div>';
+
+    if (hasDetail) {
+      html += '<button type="button" onclick="var e=document.getElementById(\'' + did + '\');e.style.display=e.style.display===\'none\'?\'block\':\'none\';" '
+        + 'style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">'
+        + (_ia?'عرض التفاصيل':'View details') + '</button>';
+    }
+    html += '</div>';
+
+    if (hasDetail) {
+      html += '<div id="' + did + '" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--rule);">';
+      if (s.analysis && s.analysis.trim()) {
+        html += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);text-transform:uppercase;margin-bottom:4px;">'
+          + (_ia?'تحليل الجلسة':'Session analysis') + '</div>'
+          + '<div style="font-size:13px;color:var(--ink);line-height:1.7;margin-bottom:12px;">' + _cpFmt(s.analysis) + '</div>';
+      }
+      if (s.transcript && s.transcript.trim()) {
+        html += '<div style="font-size:11px;letter-spacing:.05em;color:var(--ink-light);text-transform:uppercase;margin-bottom:4px;">'
+          + (_ia?'النص الكامل':'Full transcript') + '</div>'
+          + '<div style="font-size:12px;color:var(--ink-mid);line-height:1.65;white-space:pre-wrap;max-height:240px;overflow-y:auto;background:var(--paper-warm);border-radius:6px;padding:10px;">' + _cpEsc(s.transcript) + '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  list.innerHTML = html;
 }
 
 // ─── FIREFLIES IMPORT ────────────────────────────────────────────────────────
