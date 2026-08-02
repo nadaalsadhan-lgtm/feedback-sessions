@@ -628,12 +628,22 @@ let timerInterval = null;
 let secondsElapsed = 0;
 let isRecording = false;
 
+// Chunked long-recording support (handles up to ~30+ min without hitting size limits).
+let recStream = null;              // the mic stream, kept open across chunk restarts
+let recMimeType = 'audio/webm';    // chosen mime type
+let audioSegments = [];            // array of Blob chunks (each ~a few minutes)
+let chunkTimer = null;             // interval that rolls the recorder into a new chunk
+const CHUNK_SECONDS = 240;         // ~4 min per chunk -> small enough for Vercel upload
+
 // ─── RECORDER FUNCTIONS ───────────────────────────────────────────────────────
 function resetRecorder() {
   isRecording = false;
   clearInterval(timerInterval);
+  clearInterval(chunkTimer);
   secondsElapsed = 0;
   audioChunks = [];
+  audioSegments = [];
+  if (recStream) { try { recStream.getTracks().forEach(t => t.stop()); } catch(_){} recStream = null; }
   mediaRecorder = null;
   window._sessionAnalysis = null;
   window._sessionTranscript = null;
@@ -660,16 +670,25 @@ function toggleRecording() {
 
 async function startRecording() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    audioChunks = [];
-    const mimeType = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4']
+    // Lower-fidelity mono capture keeps chunks small (speech doesn't need hi-fi).
+    recStream = await navigator.mediaDevices.getUserMedia({
+      audio: { channelCount: 1, sampleRate: 16000, echoCancellation: true, noiseSuppression: true }
+    });
+    recMimeType = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4']
       .find(m => MediaRecorder.isTypeSupported(m)) || '';
-    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-    mediaRecorder.addEventListener('dataavailable', e => { if (e.data.size > 0) audioChunks.push(e.data); });
-    mediaRecorder.start(1000);
+    audioSegments = [];
+    audioChunks = [];
     isRecording = true;
     liveTranscript = '';
+    secondsElapsed = 0;
+
+    startNewChunkRecorder();          // begins the first chunk
     startLiveTranscription();
+
+    // Every CHUNK_SECONDS, close the current chunk and start a fresh one.
+    chunkTimer = setInterval(() => {
+      if (isRecording) rollChunk();
+    }, CHUNK_SECONDS * 1000);
 
     document.getElementById('recStartBtn').disabled = true;
     document.getElementById('recStopBtn').disabled = false;
@@ -690,9 +709,34 @@ async function startRecording() {
   }
 }
 
+// Create a MediaRecorder for a single chunk on the shared stream.
+function startNewChunkRecorder() {
+  audioChunks = [];
+  mediaRecorder = new MediaRecorder(recStream, recMimeType ? { mimeType: recMimeType } : {});
+  mediaRecorder.addEventListener('dataavailable', e => { if (e.data.size > 0) audioChunks.push(e.data); });
+  mediaRecorder.addEventListener('stop', () => {
+    if (audioChunks.length) {
+      audioSegments.push(new Blob(audioChunks, { type: mediaRecorder.mimeType || recMimeType || 'audio/webm' }));
+    }
+  });
+  mediaRecorder.start(1000);
+}
+
+// Close the current chunk and immediately start the next (no gap).
+function rollChunk() {
+  try {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
+  } catch (_) {}
+  // small delay to let 'stop' flush, then start the next chunk
+  setTimeout(() => { if (isRecording) startNewChunkRecorder(); }, 120);
+}
+
 async function stopRecording() {
   if (!mediaRecorder) return;
   clearInterval(timerInterval);
+  clearInterval(chunkTimer);
   isRecording = false;
 
   document.getElementById('recStartBtn').disabled = true;
@@ -702,15 +746,20 @@ async function stopRecording() {
   document.getElementById('voiceTitle').textContent = currentLang==='ar'?'جارٍ معالجة التسجيل…':'Processing recording…';
   document.getElementById('voiceSub').textContent = currentLang==='ar'?'جارٍ النسخ والتحليل — قد يستغرق هذا لحظة':'Transcribing and analyzing — this may take a moment';
 
-  mediaRecorder.stop();
-  mediaRecorder.stream.getTracks().forEach(t => t.stop());
-  stopLiveTranscription();
-  await new Promise(r => mediaRecorder.addEventListener('stop', r));
+  // finalize the current chunk
+  await new Promise(resolve => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.addEventListener('stop', resolve, { once: true });
+      try { mediaRecorder.stop(); } catch (_) { resolve(); }
+    } else { resolve(); }
+  });
 
-  const mimeType = mediaRecorder.mimeType || 'audio/webm';
-  const audioBlob = new Blob(audioChunks, { type: mimeType });
-  showProc(currentLang==='ar'?'جارٍ التحليل…':'Analyzing…', 20, currentLang==='ar'?'معالجة ما تم التقاطه…':'Processing captured speech…');
-  await transcribeAndFill(audioBlob);
+  // close the mic stream
+  if (recStream) { recStream.getTracks().forEach(t => t.stop()); recStream = null; }
+  stopLiveTranscription();
+
+  showProc(currentLang==='ar'?'جارٍ التحليل…':'Analyzing…', 15, currentLang==='ar'?'معالجة ما تم التقاطه…':'Processing captured speech…');
+  await transcribeSegmentsAndFill(audioSegments);
 }
 
 function showProc(label, pct, status) {
@@ -767,31 +816,70 @@ function stopLiveTranscription() {
   }
 }
 
-async function transcribeAndFill(audioBlob) {
+async function transcribeSegmentsAndFill(segments) {
   const isAr = currentLang === 'ar';
   try {
-    let transcript = (liveTranscript || '').trim();
+    let transcript = '';
+    const parts = [];
+    const total = (segments && segments.length) ? segments.length : 0;
 
-    if (transcript.length >= 20) {
-      // Good — we have a live transcript, go straight to analysis
-      showProc(
-        isAr ? 'جارٍ تحليل المحادثة…' : 'Analyzing conversation…',
-        60,
-        isAr ? 'تحديد المحاور والاحتكاك والإشارات…' : 'Identifying themes, friction and signals…'
-      );
+    if (total > 0) {
+      for (let i = 0; i < total; i++) {
+        const seg = segments[i];
+        const pct = 15 + Math.round((i / total) * 55); // 15% -> 70%
+        showProc(
+          isAr ? ('جارٍ النسخ الدقيق… جزء ' + (i+1) + ' من ' + total) : ('Transcribing (high quality)… part ' + (i+1) + ' of ' + total),
+          pct,
+          isAr ? 'إرسال الصوت إلى محرك النسخ…' : 'Sending audio to the transcription engine…'
+        );
+        try {
+          if (seg && seg.size > 0) {
+            const b64 = await blobToBase64(seg);
+            const resp = await fetch('/api/transcribe', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ audio: b64, mimeType: seg.type || recMimeType || 'audio/webm' })
+            });
+            const data = await resp.json();
+            if (data && data.ok && data.text) {
+              parts.push(data.text.trim());
+            } else {
+              console.warn('Chunk ' + (i+1) + ' transcription unavailable:', data && data.error);
+            }
+          }
+        } catch (cerr) {
+          console.warn('Chunk ' + (i+1) + ' failed:', cerr);
+        }
+        // update the visible transcript progressively
+        const tt = document.getElementById('transcriptText');
+        if (tt) tt.textContent = parts.join(' ');
+      }
+      transcript = parts.join(' ').trim();
+    }
+
+    // Fall back to the live transcript if Whisper produced nothing.
+    if ((!transcript || transcript.length < 2) && liveTranscript && liveTranscript.trim().length >= 2) {
+      transcript = liveTranscript.trim();
       const tt = document.getElementById('transcriptText');
       if (tt) tt.textContent = transcript;
+    }
+
+    const tt2 = document.getElementById('transcriptText');
+    if (transcript && transcript.length >= 2) {
+      showProc(
+        isAr ? 'جارٍ تحليل المحادثة…' : 'Analyzing conversation…',
+        75,
+        isAr ? 'تحديد المحاور والاحتكاك والإشارات…' : 'Identifying themes, friction and signals…'
+      );
+      if (tt2) tt2.textContent = transcript;
     } else {
-      // No live transcript — try to get one via the Web Speech API by prompting user
-      // and show a message; still run analysis on whatever we have
-      transcript = '[Session recorded. Live transcription was not available in this browser context — please type key notes from the session below, or fill in the form questions manually.]';
+      transcript = '[Session recorded. No transcript was captured — please type key notes from the session below, or fill in the form questions manually.]';
       showProc(
         isAr ? 'جارٍ التحليل…' : 'Analyzing…',
         60,
         isAr ? 'لم يُلتقط نص صوتي — يُرجى إضافة الملاحظات يدوياً' : 'No voice transcript captured — please add notes manually'
       );
-      const tt = document.getElementById('transcriptText');
-      if (tt) tt.textContent = isAr
+      if (tt2) tt2.textContent = isAr
         ? 'لم يُلتقط نص من التسجيل. يُرجى كتابة الملاحظات الرئيسية يدوياً في حقول الأسئلة أدناه.'
         : 'No transcript captured from recording. Please type your key notes into the question fields below.';
     }
@@ -808,8 +896,22 @@ async function transcribeAndFill(audioBlob) {
     const vs = document.getElementById('voiceSub');
     if (vt) vt.textContent = isAr ? 'فشلت المعالجة' : 'Processing failed';
     if (vs) vs.textContent = isAr ? 'يمكنك ملء الملاحظات يدوياً أدناه' : 'You can still fill in notes manually below';
-    console.error('transcribeAndFill error:', e);
+    console.error('transcribeSegmentsAndFill error:', e);
   }
+}
+
+// Convert an audio Blob to a base64 string (no data-URL prefix).
+function blobToBase64(blob) {
+  return new Promise(function (resolve, reject) {
+    var reader = new FileReader();
+    reader.onloadend = function () {
+      var result = reader.result || '';
+      var comma = result.indexOf(',');
+      resolve(comma !== -1 ? result.slice(comma + 1) : result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
 
 async function analyzeTranscript(transcript) {
@@ -1663,29 +1765,147 @@ function openClientPage(name, group) {
     });
 
   // --- In-app feedback sessions for this client (from localStorage) ---
+  // --- Feedback Sessions: in-app (localStorage) + attached (Fireflies, server) ---
+  renderClientSessions(name, _ia, T);
+}
+
+// Renders the combined sessions (in-app Groq Whisper + Fireflies imports).
+function renderClientSessions(name, _ia, T) {
+  var sBox = document.getElementById('cp-sessions');
+  if (!sBox) return;
+
+  // header with Import button
+  var head = '<div class="section-divider" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">'
+    + '<span>' + T.sessions + '</span>'
+    + '<button type="button" class="btn-sm" onclick="openFirefliesImport(' + JSON.stringify(name) + ')" '
+    + 'style="background:var(--ink);color:#fff;font-size:11px;padding:5px 12px;border-radius:6px;border:none;cursor:pointer;">'
+    + (_ia ? 'استيراد من Fireflies' : 'Import from Fireflies') + '</button></div>';
+
+  sBox.innerHTML = head + '<div id="cp-sessions-list" style="color:var(--ink-light);font-size:13px;padding:.25rem 0;">' + (_ia?'جارٍ التحميل…':'Loading…') + '</div>';
+
+  // gather in-app sessions
+  var mine = [];
   try {
     var all = JSON.parse(localStorage.getItem('fb_sessions') || '[]');
-    var mine = all.filter(function (s) { return (s.client || '').trim().toLowerCase() === name.trim().toLowerCase(); });
-    var sBox = document.getElementById('cp-sessions');
-    if (sBox) {
-      if (!mine.length) {
-        sBox.innerHTML = '<div class="section-divider">' + T.sessions + '</div>'
-          + '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.noSess + '</div>';
-      } else {
-        var rows = mine.map(function (s) {
-          var d = s.date ? new Date(s.date).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
-          var sc = (s.overallScore !== undefined && s.overallScore !== null && s.overallScore !== '') ? s.overallScore : '—';
-          var by = s.conductedBy || '—';
-          return '<tr><td style="font-size:12px;">' + d + '</td><td style="font-size:12px;">' + (_ia?'الدرجة':'Score') + ': ' + sc + ' · ' + by + '</td></tr>';
-        }).join('');
-        sBox.innerHTML = '<div class="section-divider">' + T.sessions + '</div>'
-          + '<div style="overflow-x:auto;"><table class="sessions-table"><thead><tr><th>' + T.when + '</th><th>' + (_ia?'ملخص':'Summary') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
-      }
-    }
-  } catch (e) {
-    var sBox2 = document.getElementById('cp-sessions');
-    if (sBox2) sBox2.innerHTML = '';
+    mine = all.filter(function (s) { return (s.client || '').trim().toLowerCase() === name.trim().toLowerCase(); })
+      .map(function (s) {
+        return {
+          source: 'in_app',
+          date: s.date || s.savedAt || '',
+          title: (_ia?'جلسة داخل التطبيق':'In-app session'),
+          detail: (_ia?'الدرجة':'Score') + ': ' + ((s.overallScore!=null&&s.overallScore!=='')?s.overallScore:'—') + ' · ' + (s.conductedBy||'—')
+        };
+      });
+  } catch (e) {}
+
+  // fetch attached (Fireflies) sessions from server, then render combined
+  fetch('/api/attach-session?client=' + encodeURIComponent(name))
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      var attached = (data && data.sessions) ? data.sessions : [];
+      var att = attached.map(function (s) {
+        return {
+          source: s.source || 'fireflies',
+          date: s.date || s.at || '',
+          title: s.title || (_ia?'جلسة Fireflies':'Fireflies session'),
+          detail: (s.summary ? String(s.summary).slice(0,140) : (s.text ? String(s.text).slice(0,140) + '…' : '—'))
+        };
+      });
+      renderSessionsList(mine.concat(att), _ia, T);
+    })
+    .catch(function () {
+      renderSessionsList(mine, _ia, T); // at least show local ones
+    });
+}
+
+function renderSessionsList(items, _ia, T) {
+  var list = document.getElementById('cp-sessions-list');
+  if (!list) return;
+  if (!items.length) {
+    list.innerHTML = '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0 1rem;">' + T.noSess + '</div>';
+    return;
   }
+  // sort newest first
+  items.sort(function (a,b) { return (b.date||'').localeCompare(a.date||''); });
+  var srcLabel = { in_app: (_ia?'داخل التطبيق':'In-app'), fireflies: 'Fireflies' };
+  var rows = items.map(function (s) {
+    var d = s.date ? new Date(s.date).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+    var tag = '<span style="font-size:10px;background:var(--paper-warm);border:1px solid var(--rule);border-radius:10px;padding:1px 8px;color:var(--ink-mid);">' + (srcLabel[s.source]||s.source) + '</span>';
+    return '<tr><td style="font-size:12px;white-space:nowrap;">' + d + '</td>'
+      + '<td>' + tag + '</td>'
+      + '<td style="font-size:12px;color:var(--ink-mid);">' + (s.title||'') + (s.detail?(' — ' + s.detail):'') + '</td></tr>';
+  }).join('');
+  list.innerHTML = '<div style="overflow-x:auto;"><table class="sessions-table"><thead><tr><th>' + T.when + '</th><th>' + (_ia?'المصدر':'Source') + '</th><th>' + (_ia?'التفاصيل':'Details') + '</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+}
+
+// ─── FIREFLIES IMPORT ────────────────────────────────────────────────────────
+function openFirefliesImport(clientName) {
+  var _ia = currentLang === 'ar';
+  var overlay = document.getElementById('ffOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'ffOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9999;';
+    overlay.innerHTML = '<div style="background:#fff;max-width:520px;width:92%;max-height:80vh;overflow:auto;border-radius:14px;padding:22px;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+      + '<strong id="ffTitle" style="font-size:16px;"></strong>'
+      + '<button onclick="closeFirefliesImport()" style="border:none;background:transparent;font-size:20px;cursor:pointer;color:#888;">&times;</button></div>'
+      + '<div id="ffBody" style="font-size:13px;color:#555;">'+(_ia?'جارٍ التحميل…':'Loading…')+'</div></div>';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  document.getElementById('ffTitle').textContent = (_ia?'استيراد جلسة لـ ':'Import a session for ') + clientName;
+  var bodyEl = document.getElementById('ffBody');
+  bodyEl.textContent = _ia?'جارٍ جلب اجتماعات Fireflies…':'Fetching your Fireflies meetings…';
+
+  fetch('/api/fireflies', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'list', limit:20 }) })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok) {
+        bodyEl.innerHTML = '<div style="color:#c0392b;">' + (_ia?'تعذّر الاتصال بـ Fireflies: ':'Could not connect to Fireflies: ') + (data.error||'') + '</div>'
+          + '<div style="margin-top:8px;color:#888;">' + (_ia?'تأكد من إضافة مفتاح FIREFLIES_API_KEY في Vercel.':'Make sure FIREFLIES_API_KEY is set in Vercel.') + '</div>';
+        return;
+      }
+      var list = data.transcripts || [];
+      if (!list.length) { bodyEl.textContent = _ia?'لا توجد اجتماعات.':'No meetings found.'; return; }
+      bodyEl.innerHTML = list.map(function (m) {
+        var d = m.date ? new Date(Number(m.date) || m.date).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #eee;padding:10px 0;">'
+          + '<div><div style="font-weight:bold;font-size:13px;">' + (m.title||'Meeting') + '</div><div style="font-size:11px;color:#999;">' + d + '</div></div>'
+          + '<button onclick="importFireflies(' + JSON.stringify(m.id) + ',' + JSON.stringify(clientName) + ',this)" '
+          + 'style="background:var(--ink,#222);color:#fff;border:none;border-radius:6px;font-size:11px;padding:6px 12px;cursor:pointer;">'
+          + (_ia?'استيراد':'Import') + '</button></div>';
+      }).join('');
+    })
+    .catch(function (e) { bodyEl.innerHTML = '<div style="color:#c0392b;">' + e.message + '</div>'; });
+}
+
+function closeFirefliesImport() {
+  var o = document.getElementById('ffOverlay');
+  if (o) o.style.display = 'none';
+}
+
+function importFireflies(id, clientName, btn) {
+  var _ia = currentLang === 'ar';
+  btn.disabled = true; btn.textContent = '…';
+  fetch('/api/fireflies', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'get', id:id }) })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (!data.ok || !data.transcript) throw new Error(data.error || 'fetch failed');
+      var t = data.transcript;
+      return fetch('/api/attach-session', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ client: clientName, source:'fireflies', title: t.title || 'Fireflies session', date: t.date, text: t.text, summary: t.summary }) });
+    })
+    .then(function (r) { return r.json(); })
+    .then(function () {
+      btn.textContent = _ia?'تم ✓':'Done ✓';
+      setTimeout(function () { closeFirefliesImport(); renderClientSessions(clientName, _ia, {
+        sessions: _ia?'جلسات التغذية الراجعة':'Feedback Sessions',
+        noSess: _ia?'لا توجد جلسات مسجلة لهذا العميل.':'No recorded sessions for this client.',
+        when: _ia?'التاريخ':'When'
+      }); }, 700);
+    })
+    .catch(function (e) { btn.disabled = false; btn.textContent = (_ia?'استيراد':'Import'); alert((_ia?'فشل الاستيراد: ':'Import failed: ') + e.message); });
 }
 
 // Renders the NPS section on a client page (called from openClientPage's fetch).
