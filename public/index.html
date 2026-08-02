@@ -1952,11 +1952,15 @@ function renderClientSessions(name, _ia, T) {
     + '<div style="display:flex;align-items:center;gap:.7rem;">'
     + '<div class="fb-block-badge" style="background:var(--accent-both-light);">🎙️</div>'
     + '<div class="fb-block-title">' + T.sessions + '</div></div>'
-    + '<button type="button" onclick="openFirefliesImport(' + JSON.stringify(name) + ')" '
+    + '<button type="button" id="ffImportBtn" '
     + 'style="background:var(--ink);color:#fff;font-size:11px;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;">'
     + (_ia ? 'استيراد من Fireflies' : 'Import from Fireflies') + '</button></div>';
 
   sBox.innerHTML = head + '<div id="cp-sessions-list" style="color:var(--ink-light);font-size:13px;padding:.25rem 0;">' + (_ia?'جارٍ التحميل…':'Loading…') + '</div>';
+
+  // wire the import button via listener (avoids inline-onclick quote issues)
+  var _ffBtn = document.getElementById('ffImportBtn');
+  if (_ffBtn) _ffBtn.addEventListener('click', function () { openFirefliesImport(name); });
 
   // gather in-app sessions
   var mine = [];
@@ -2092,10 +2096,16 @@ function openFirefliesImport(clientName) {
         var d = m.date ? new Date(Number(m.date) || m.date).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'}) : '';
         return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid #eee;padding:10px 0;">'
           + '<div><div style="font-weight:bold;font-size:13px;">' + (m.title||'Meeting') + '</div><div style="font-size:11px;color:#999;">' + d + '</div></div>'
-          + '<button onclick="importFireflies(' + JSON.stringify(m.id) + ',' + JSON.stringify(clientName) + ',this)" '
+          + '<button class="ff-import-one" data-ffid="' + encodeURIComponent(m.id) + '" '
           + 'style="background:var(--ink,#222);color:#fff;border:none;border-radius:6px;font-size:11px;padding:6px 12px;cursor:pointer;">'
           + (_ia?'استيراد':'Import') + '</button></div>';
       }).join('');
+      // wire each import button via listener (no inline-onclick quote issues)
+      bodyEl.querySelectorAll('.ff-import-one').forEach(function (b) {
+        b.addEventListener('click', function () {
+          importFireflies(decodeURIComponent(b.getAttribute('data-ffid')), clientName, b);
+        });
+      });
     })
     .catch(function (e) { bodyEl.innerHTML = '<div style="color:#c0392b;">' + e.message + '</div>'; });
 }
