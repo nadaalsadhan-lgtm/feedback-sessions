@@ -1842,12 +1842,12 @@ function renderClientsDirectory() {
   var _ia = currentLang === 'ar';
   var list = getClientList();
 
-  // "Add client" button above the grid
+  // "Manage clients" button above the grid
   var addBar = document.getElementById('clientsAddBar');
   if (addBar) {
-    addBar.innerHTML = '<button type="button" onclick="openClientEditor()" '
-      + 'style="background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:12px;padding:8px 16px;cursor:pointer;">'
-      + '+ ' + (_ia?'إضافة عميل':'Add client') + '</button>';
+    addBar.innerHTML = '<button type="button" onclick="openManageClients()" '
+      + 'style="background:transparent;color:var(--ink-mid);border:1px solid var(--rule);border-radius:8px;font-size:12px;padding:8px 16px;cursor:pointer;">'
+      + '⚙ ' + (_ia?'إدارة العملاء':'Manage clients') + '</button>';
   }
 
   if (!list.length) {
@@ -1855,16 +1855,57 @@ function renderClientsDirectory() {
     return;
   }
 
+  // clean cards — just clickable, no buttons
   grid.innerHTML = list.map(function (c) {
+    return '<div class="client-chip cp-card" data-group="' + c.group + '" data-name="' + c.name.replace(/"/g,'&quot;') + '" '
+      + 'onclick="openClientPage(this.getAttribute(\'data-name\'), this.getAttribute(\'data-group\'))" style="cursor:pointer;">'
+      + '<span class="chip-name">' + c.name + '</span>'
+      + '<span class="chip-tag">' + groupLabel(c.group) + '</span></div>';
+  }).join('');
+}
+
+// ─── MANAGE CLIENTS (single dialog with the full list) ───────────────────────
+function openManageClients() {
+  var _ia = currentLang === 'ar';
+  var overlay = document.getElementById('manageClientsOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'manageClientsOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:9998;';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+  renderManageList();
+}
+
+function renderManageList() {
+  var _ia = currentLang === 'ar';
+  var overlay = document.getElementById('manageClientsOverlay');
+  if (!overlay) return;
+  var rows = (CLIENTS || []).map(function (c) {
     var nmeEsc = c.name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    return '<div class="client-chip cp-card" data-group="' + c.group + '" data-name="' + c.name.replace(/"/g,'&quot;') + '" style="display:flex;flex-direction:column;gap:8px;">'
-      + '<div onclick="openClientPage(this.parentNode.getAttribute(\'data-name\'), this.parentNode.getAttribute(\'data-group\'))" style="cursor:pointer;">'
-      + '<span class="chip-name">' + c.name + '</span><br><span class="chip-tag">' + groupLabel(c.group) + '</span></div>'
-      + '<div style="display:flex;gap:6px;">'
-      + '<button type="button" onclick="openClientEditor(\'' + nmeEsc + '\')" style="flex:1;border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:11px;padding:4px 8px;border-radius:6px;cursor:pointer;">' + (_ia?'تعديل':'Edit') + '</button>'
-      + '<button type="button" onclick="deleteClient(\'' + nmeEsc + '\')" style="flex:1;border:1px solid var(--rule);background:transparent;color:var(--danger);font-size:11px;padding:4px 8px;border-radius:6px;cursor:pointer;">' + (_ia?'حذف':'Delete') + '</button>'
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);">'
+      + '<div style="min-width:0;"><div style="font-size:13px;font-weight:500;color:var(--ink);overflow:hidden;text-overflow:ellipsis;">' + c.name + '</div>'
+      + '<div class="chip-tag" style="color:var(--ink-light);">' + groupLabel(c.group) + '</div></div>'
+      + '<div style="display:flex;gap:6px;flex-shrink:0;">'
+      + '<button type="button" onclick="openClientEditor(\'' + nmeEsc + '\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;">' + (_ia?'تعديل':'Edit') + '</button>'
+      + '<button type="button" onclick="deleteClient(\'' + nmeEsc + '\')" style="border:1px solid var(--rule);background:transparent;color:var(--danger);font-size:11px;padding:4px 12px;border-radius:6px;cursor:pointer;">' + (_ia?'حذف':'Delete') + '</button>'
       + '</div></div>';
   }).join('');
+
+  overlay.innerHTML = '<div style="background:#fff;max-width:560px;width:92%;max-height:82vh;display:flex;flex-direction:column;border-radius:14px;padding:22px 24px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">'
+    + '<strong style="font-size:18px;font-family:\'DM Serif Display\',serif;">' + (_ia?'إدارة العملاء':'Manage clients') + '</strong>'
+    + '<button onclick="closeManageClients()" style="border:none;background:transparent;font-size:22px;cursor:pointer;color:#999;">&times;</button></div>'
+    + '<div style="font-size:12px;color:var(--ink-light);margin-bottom:14px;">' + (CLIENTS||[]).length + ' ' + (_ia?'عميل':'clients') + '</div>'
+    + '<button type="button" onclick="openClientEditor()" style="background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:12px;padding:9px 16px;cursor:pointer;margin-bottom:14px;align-self:flex-start;">+ ' + (_ia?'إضافة عميل':'Add client') + '</button>'
+    + '<div style="overflow-y:auto;flex:1;border-top:1px solid var(--rule);">' + (rows || ('<div style="padding:1rem 0;color:var(--ink-light);font-size:13px;">' + (_ia?'لا يوجد عملاء.':'No clients yet.') + '</div>')) + '</div>'
+    + '</div>';
+}
+
+function closeManageClients() {
+  var o = document.getElementById('manageClientsOverlay');
+  if (o) o.style.display = 'none';
 }
 
 // ─── CLIENT ADD / EDIT / DELETE ──────────────────────────────────────────────
@@ -1914,6 +1955,8 @@ function openClientEditor(existingName) {
         closeClientEditor();
         buildClientChips();
         renderClientsDirectory();
+      if (document.getElementById("manageClientsOverlay") && document.getElementById("manageClientsOverlay").style.display!=="none") renderManageList();
+        if (document.getElementById("manageClientsOverlay") && document.getElementById("manageClientsOverlay").style.display!=="none") renderManageList();
         showToast(editing ? (_ia?'تم تحديث العميل':'Client updated') : (_ia?'تمت إضافة العميل':'Client added'));
       })
       .catch(function(e){ alert(e.message); btn.disabled=false; btn.textContent=(_ia?'حفظ':'Save'); });
@@ -1940,6 +1983,7 @@ function deleteClient(name) {
       CLIENTS = d.clients || CLIENTS;
       buildClientChips();
       renderClientsDirectory();
+      if (document.getElementById("manageClientsOverlay") && document.getElementById("manageClientsOverlay").style.display!=="none") renderManageList();
       showToast(_ia?'تم حذف العميل':'Client deleted');
     })
     .catch(function(e){ alert(e.message); });
