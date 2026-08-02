@@ -386,9 +386,9 @@ html[lang="ar"] .voice-timer { text-align:left; }
           <div style="width:8px;height:8px;border-radius:50%;background:var(--gold);flex-shrink:0;"></div>
           <span style="font-size:12px;font-weight:500;color:white;letter-spacing:.04em;" data-en="SESSION ANALYSIS" data-ar="تحليل الجلسة">SESSION ANALYSIS</span>
         </div>
-        <div style="display:flex;gap:6px;">
-          <button onclick="toggleTranscript()" style="padding:3px 10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.6);border-radius:4px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" data-en="View transcript" data-ar="عرض النص">View transcript</button>
-          <button onclick="copyAnalysis()" style="padding:3px 10px;border:1px solid rgba(255,255,255,.2);background:transparent;color:rgba(255,255,255,.6);border-radius:4px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" data-en="Copy" data-ar="نسخ">Copy</button>
+        <div style="display:flex;gap:6px;position:relative;z-index:2;">
+          <button type="button" onclick="toggleTranscript()" style="padding:5px 12px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);border-radius:4px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" data-en="View transcript" data-ar="عرض النص">View transcript</button>
+          <button type="button" onclick="copyAnalysis()" style="padding:5px 12px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:rgba(255,255,255,.9);border-radius:4px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;" data-en="Copy" data-ar="نسخ">Copy</button>
         </div>
       </div>
       <div id="analysisText" style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.75;white-space:pre-wrap;"></div>
