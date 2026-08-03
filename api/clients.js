@@ -70,7 +70,7 @@ module.exports = async function handler(req, res) {
       if (!name) return res.status(400).json({ ok: false, error: 'missing name' });
       if (list.some(function (c) { return c.name.toLowerCase() === name.toLowerCase(); }))
         return res.status(400).json({ ok: false, error: 'client already exists' });
-      list.push({ name: name, group: group });
+      list.push({ name: name, group: group, pipedriveId: norm(body.pipedriveId) });
       await writeClients(list);
       return res.status(200).json({ ok: true, clients: list });
     }
@@ -86,7 +86,7 @@ module.exports = async function handler(req, res) {
       if (newName.toLowerCase() !== oldName.toLowerCase()
           && list.some(function (c) { return c.name.toLowerCase() === newName.toLowerCase(); }))
         return res.status(400).json({ ok: false, error: 'another client already has that name' });
-      list[idx] = { name: newName, group: g };
+      list[idx] = { name: newName, group: g, pipedriveId: norm(body.pipedriveId) };
       await writeClients(list);
       return res.status(200).json({ ok: true, clients: list, renamedFrom: oldName, renamedTo: newName });
     }
