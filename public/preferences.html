@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Preferences | KABi</title>
+<style>
+  :root{
+    --blue:#216AB1; --turq:#1EAFD9; --topaz:#0EB3AE; --meteor:#3D3185; --purple:#9B81BC;
+    --ink:#1a2733; --ink-mid:#4a5866; --ink-light:#8a97a6; --rule:#e6e9ee;
+    --paper:#f7f9fb; --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;}
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px 60px;}
+  .banner{width:100%;display:block;border-radius:0 0 0 0;}
+  .banner-wrap{max-width:640px;margin:0 auto;}
+  .head{text-align:center;padding:34px 20px 10px;}
+  .head h1{font-size:26px;color:var(--blue);margin:0 0 8px;}
+  .head p{font-size:15px;color:var(--ink-mid);margin:0 auto;max-width:520px;}
+  .langbar{display:flex;justify-content:center;gap:8px;margin:14px 0 0;}
+  .langbar button{border:1px solid var(--rule);background:#fff;color:var(--ink-mid);border-radius:20px;padding:6px 16px;font-size:13px;cursor:pointer;}
+  .langbar button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .section{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:22px 22px 8px;margin:18px 0;}
+  .section-title{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--topaz);font-weight:bold;margin:0 0 4px;}
+  .section-sub{font-size:12px;color:var(--ink-light);margin:0 0 18px;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-size:14px;font-weight:bold;color:var(--ink);margin-bottom:7px;}
+  .field .hint{font-weight:normal;color:var(--ink-light);font-size:12px;}
+  input[type=text],input[type=email],input[type=tel],textarea,select{
+    width:100%;border:1.5px solid var(--rule);border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);
+  }
+  textarea{resize:vertical;min-height:74px;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--turq);}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{border:1.5px solid var(--rule);background:#fff;border-radius:22px;padding:8px 16px;font-size:13px;cursor:pointer;color:var(--ink-mid);user-select:none;}
+  .chip.sel{background:var(--topaz);border-color:var(--topaz);color:#fff;}
+  .row2{display:flex;gap:12px;}
+  .row2 .field{flex:1;}
+  .submit{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:6px;}
+  .submit:disabled{opacity:.6;cursor:default;}
+  .foot{text-align:center;color:var(--ink-light);font-size:12px;margin-top:22px;}
+  .thanks{display:none;text-align:center;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:44px 24px;margin:24px 0;}
+  .thanks .tick{width:64px;height:64px;border-radius:50%;background:var(--topaz);color:#fff;font-size:34px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;}
+  .thanks h2{color:var(--blue);margin:0 0 8px;}
+  [dir=rtl] .row2{flex-direction:row-reverse;}
+  @media(max-width:520px){ .row2{flex-direction:column;gap:0;} }
+</style>
+</head>
+<body>
+<div class="banner-wrap">
+  <img src="https://feedback-sessions.vercel.app/KABi_NPS_Header.png" alt="KABi" class="banner">
+</div>
+
+<div class="wrap">
+  <div class="head">
+    <h1 data-en="Let's tailor your experience" data-ar="لنُصمّم تجربتك">Let's tailor your experience</h1>
+    <p data-en="Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences. This takes about 5 minutes." data-ar="مرحباً بك في KABi. لكي تسير شراكتنا بالطريقة التي تناسبك، نودّ أن نتعرّف على تفضيلاتك. يستغرق هذا حوالي ٥ دقائق.">Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences. This takes about 5 minutes.</p>
+    <div class="langbar">
+      <button id="lang-en" class="active" onclick="setLang('en')">English</button>
+      <button id="lang-ar" onclick="setLang('ar')">العربية</button>
+    </div>
+  </div>
+
+  <form id="prefForm" onsubmit="return submitForm(event)">
+
+    <!-- SECTION 1: About you -->
+    <div class="section">
+      <div class="section-title" data-en="About you" data-ar="عنك">About you</div>
+      <div class="section-sub" data-en="Who we'll be working with day to day." data-ar="من سنعمل معه يومياً.">Who we'll be working with day to day.</div>
+      <div class="row2">
+        <div class="field">
+          <label data-en="Project owner name" data-ar="اسم مسؤول المشروع">Project owner name</label>
+          <input type="text" name="ownerName">
+        </div>
+        <div class="field">
+          <label data-en="Role / title" data-ar="المسمى الوظيفي">Role / title</label>
+          <input type="text" name="ownerRole">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label data-en="Email" data-ar="البريد الإلكتروني">Email</label>
+          <input type="email" name="ownerEmail">
+        </div>
+        <div class="field">
+          <label data-en="Phone" data-ar="رقم الهاتف">Phone</label>
+          <input type="tel" name="ownerPhone">
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2: How we'll work together -->
+    <div class="section">
+      <div class="section-title" data-en="How we'll work together" data-ar="كيف سنعمل معاً">How we'll work together</div>
+      <div class="section-sub" data-en="Your preferred rhythm and channels." data-ar="الإيقاع والقنوات المفضّلة لديك.">Your preferred rhythm and channels.</div>
+
+      <div class="field">
+        <label data-en="Preferred communication tool" data-ar="أداة التواصل المفضّلة">Preferred communication tool</label>
+        <div class="chips" data-chipgroup="commTool">
+          <span class="chip" data-val="Email" data-en="Email" data-ar="البريد الإلكتروني">Email</span>
+          <span class="chip" data-val="Phone" data-en="Phone" data-ar="الهاتف">Phone</span>
+          <span class="chip" data-val="WhatsApp" data-en="WhatsApp" data-ar="واتساب">WhatsApp</span>
+          <span class="chip" data-val="Teams" data-en="Teams" data-ar="Teams">Teams</span>
+          <span class="chip" data-val="Slack" data-en="Slack" data-ar="Slack">Slack</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-en="Preferred communication language" data-ar="لغة التواصل المفضّلة">Preferred communication language</label>
+        <div class="chips" data-chipgroup="commLanguage">
+          <span class="chip" data-val="Arabic" data-en="Arabic" data-ar="العربية">Arabic</span>
+          <span class="chip" data-val="English" data-en="English" data-ar="الإنجليزية">English</span>
+          <span class="chip" data-val="Both" data-en="Both" data-ar="كلاهما">Both</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-en="Preferred meeting cadence" data-ar="وتيرة الاجتماعات المفضّلة">Preferred meeting cadence</label>
+        <div class="chips" data-chipgroup="cadence">
+          <span class="chip" data-val="Weekly" data-en="Weekly" data-ar="أسبوعياً">Weekly</span>
+          <span class="chip" data-val="Biweekly" data-en="Biweekly" data-ar="كل أسبوعين">Biweekly</span>
+          <span class="chip" data-val="Monthly" data-en="Monthly" data-ar="شهرياً">Monthly</span>
+          <span class="chip" data-val="As needed" data-en="As needed" data-ar="عند الحاجة">As needed</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-en="Do you prefer short updates or detailed reports?" data-ar="هل تفضّل تحديثات موجزة أم تقارير مفصّلة؟">Do you prefer short updates or detailed reports?</label>
+        <div class="chips" data-chipgroup="detailLevel">
+          <span class="chip" data-val="Short updates" data-en="Short updates" data-ar="تحديثات موجزة">Short updates</span>
+          <span class="chip" data-val="Detailed reports" data-en="Detailed reports" data-ar="تقارير مفصّلة">Detailed reports</span>
+          <span class="chip" data-val="A mix" data-en="A mix" data-ar="مزيج">A mix</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-en="How would you like to receive project updates?" data-ar="كيف تودّ تلقّي تحديثات المشروع؟">How would you like to receive project updates?</label>
+        <textarea name="updateFormat" data-ph-en="e.g. a weekly email summary, a live dashboard, a monthly call…" data-ph-ar="مثال: ملخص أسبوعي بالبريد، لوحة مباشرة، مكالمة شهرية…"></textarea>
+      </div>
+    </div>
+
+    <!-- SECTION 3: Goals & context -->
+    <div class="section">
+      <div class="section-title" data-en="Your goals & context" data-ar="أهدافك والسياق">Your goals & context</div>
+      <div class="section-sub" data-en="What success looks like for you." data-ar="كيف يبدو النجاح بالنسبة لك.">What success looks like for you.</div>
+
+      <div class="field">
+        <label data-en="What are your main goals for this project?" data-ar="ما أهدافك الرئيسية من هذا المشروع؟">What are your main goals for this project?</label>
+        <textarea name="goals"></textarea>
+      </div>
+      <div class="field">
+        <label data-en="How would you define success in 3–6 months?" data-ar="كيف تُعرّف النجاح خلال ٣ إلى ٦ أشهر؟">How would you define success in 3–6 months?</label>
+        <textarea name="success"></textarea>
+      </div>
+      <div class="field">
+        <label data-en="What is your biggest challenge today?" data-ar="ما أكبر تحدٍّ تواجهه اليوم؟">What is your biggest challenge today?</label>
+        <textarea name="challenge"></textarea>
+      </div>
+      <div class="field">
+        <label data-en="Have you used a similar system before?" data-ar="هل استخدمت نظاماً مشابهاً من قبل؟">Have you used a similar system before? <span class="hint" data-en="If so, what worked or didn't?" data-ar="إن كان كذلك، ما الذي نجح وما الذي لم ينجح؟">If so, what worked or didn't?</span></label>
+        <textarea name="usedSimilar"></textarea>
+      </div>
+    </div>
+
+    <!-- SECTION 4: Making it exceptional -->
+    <div class="section">
+      <div class="section-title" data-en="Making it exceptional" data-ar="لنجعلها استثنائية">Making it exceptional</div>
+      <div class="section-sub" data-en="Help us go above and beyond." data-ar="ساعدنا لنتجاوز توقّعاتك.">Help us go above and beyond.</div>
+
+      <div class="field">
+        <label data-en="If we could do one thing to make your experience exceptional, what would it be?" data-ar="لو كان بإمكاننا فعل شيء واحد لجعل تجربتك استثنائية، فماذا سيكون؟">If we could do one thing to make your experience exceptional, what would it be?</label>
+        <textarea name="oneThing"></textarea>
+      </div>
+      <div class="field">
+        <label data-en="What frustrates you most when working with a service provider?" data-ar="ما الذي يزعجك أكثر عند التعامل مع مزوّد خدمة؟">What frustrates you most when working with a service provider?</label>
+        <textarea name="frustration"></textarea>
+      </div>
+      <div class="field">
+        <label data-en="Is it OK to announce our partnership on social media?" data-ar="هل من الممكن الإعلان عن شراكتنا على وسائل التواصل الاجتماعي؟">Is it OK to announce our partnership on social media?</label>
+        <div class="chips" data-chipgroup="socialOk">
+          <span class="chip" data-val="Yes" data-en="Yes" data-ar="نعم">Yes</span>
+          <span class="chip" data-val="No" data-en="No" data-ar="لا">No</span>
+          <span class="chip" data-val="Let's discuss" data-en="Let's discuss" data-ar="لنناقش ذلك">Let's discuss</span>
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="submit" data-en="Submit preferences" data-ar="إرسال التفضيلات">Submit preferences</button>
+    <div class="foot" data-en="KABi • Continuously improving your experience" data-ar="KABi • نُحسّن تجربتك باستمرار">KABi • Continuously improving your experience</div>
+  </form>
+
+  <div class="thanks" id="thanks">
+    <div class="tick">&#10003;</div>
+    <h2 data-en="Thank you!" data-ar="شكراً لك!">Thank you!</h2>
+    <p data-en="Your preferences have been received. We'll use them to tailor how we work together." data-ar="تم استلام تفضيلاتك. سنستخدمها لتخصيص طريقة عملنا معاً.">Your preferences have been received. We'll use them to tailor how we work together.</p>
+  </div>
+</div>
+
+<script>
+  // read client + product from the link (?client=SNB&product=HYRDD)
+  var params = new URLSearchParams(location.search);
+  var CLIENT = params.get('client') || '';
+  var PRODUCT = params.get('product') || '';
+  var selections = {};
+
+  var currentLang = 'en';
+  function setLang(l){
+    currentLang = l;
+    document.getElementById('lang-en').classList.toggle('active', l==='en');
+    document.getElementById('lang-ar').classList.toggle('active', l==='ar');
+    document.documentElement.dir = (l==='ar') ? 'rtl' : 'ltr';
+    document.documentElement.lang = l;
+    document.querySelectorAll('[data-en]').forEach(function(el){
+      var t = el.getAttribute('data-'+l);
+      if(t!==null){
+        // keep nested hint spans intact for labels
+        if(el.querySelector('.hint')){ /* skip; handled separately */ }
+        else el.textContent = t;
+      }
+    });
+    // hint spans
+    document.querySelectorAll('.hint[data-en]').forEach(function(el){
+      var t = el.getAttribute('data-'+l); if(t!==null) el.textContent=t;
+    });
+    // placeholders
+    document.querySelectorAll('[data-ph-en]').forEach(function(el){
+      var t = el.getAttribute('data-ph-'+l); if(t!==null) el.placeholder=t;
+    });
+  }
+
+  // chip single-select
+  document.querySelectorAll('.chips').forEach(function(group){
+    var key = group.getAttribute('data-chipgroup');
+    group.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        group.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('sel'); });
+        chip.classList.add('sel');
+        selections[key] = chip.getAttribute('data-val');
+      });
+    });
+  });
+
+  function submitForm(e){
+    e.preventDefault();
+    var f = document.getElementById('prefForm');
+    var payload = {
+      client: CLIENT, product: PRODUCT,
+      ownerName: f.ownerName.value, ownerRole: f.ownerRole.value,
+      ownerEmail: f.ownerEmail.value, ownerPhone: f.ownerPhone.value,
+      commTool: selections.commTool||'', commLanguage: selections.commLanguage||'',
+      cadence: selections.cadence||'', detailLevel: selections.detailLevel||'',
+      updateFormat: f.updateFormat.value,
+      goals: f.goals.value, success: f.success.value, challenge: f.challenge.value,
+      usedSimilar: f.usedSimilar.value,
+      oneThing: f.oneThing.value, frustration: f.frustration.value,
+      socialOk: selections.socialOk||''
+    };
+    var btn = f.querySelector('.submit');
+    btn.disabled = true;
+    btn.textContent = currentLang==='ar' ? 'جارٍ الإرسال…' : 'Submitting…';
+    fetch('/api/preferences', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.ok) throw new Error(d.error||'failed');
+        f.style.display='none';
+        document.getElementById('thanks').style.display='block';
+        window.scrollTo({top:0,behavior:'smooth'});
+      })
+      .catch(function(err){
+        btn.disabled=false;
+        btn.textContent = currentLang==='ar' ? 'إرسال التفضيلات' : 'Submit preferences';
+        alert((currentLang==='ar'?'تعذّر الإرسال: ':'Could not submit: ') + err.message);
+      });
+    return false;
+  }
+</script>
+</body>
+</html>
