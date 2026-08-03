@@ -1111,6 +1111,93 @@ function copyPrefShare(which) {
   }).catch(function(){ showToast(_ia?'تعذّر النسخ':'Copy failed'); });
 }
 
+// Opens a BRANDED HTML email in a new tab, ready to copy-paste into Outlook.
+// Each team gets its own accent color (KABi palette).
+function openTeamEmail(which) {
+  var _ia = currentLang === 'ar';
+  var p = window._prefFull || {};
+  if (!p.client) { showToast(_ia?'لا توجد بيانات':'No data'); return; }
+
+  var TEAM = {
+    marketing: { label: _ia?'فريق التسويق':'Marketing Team', accent:'#0EB3AE', accent2:'#1EAFD9', icon:'📣',
+      to: TEAM_EMAILS.marketing },
+    account:   { label: _ia?'فريق الحسابات':'Account Team', accent:'#216AB1', accent2:'#1EAFD9', icon:'👤',
+      to: TEAM_EMAILS.account },
+    delivery:  { label: _ia?'فريق التسليم':'Delivery Team', accent:'#3D3185', accent2:'#9B81BC', icon:'🛠',
+      to: TEAM_EMAILS.delivery }
+  };
+  var t = TEAM[which]; if (!t) return;
+
+  function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function rowHtml(label, val){
+    if(!val) return '';
+    return '<tr><td style="padding:12px 0;border-bottom:1px solid #eef1f4;">'
+      + '<div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#8a97a6;margin-bottom:4px;">'+esc(label)+'</div>'
+      + '<div style="font-size:15px;color:#1a2733;line-height:1.6;">'+esc(val)+'</div></td></tr>';
+  }
+
+  // team-specific content
+  var rows = '';
+  var headline = '';
+  if (which === 'marketing') {
+    var flag = /^yes/i.test(p.socialOk) ? (_ia?'✅ موافق على الإعلان عن الشراكة':'✅ APPROVED to announce the partnership')
+             : /^no/i.test(p.socialOk) ? (_ia?'⛔ عدم الإعلان':'⛔ DO NOT announce')
+             : (_ia?'💬 مناقشة قبل الإعلان':'💬 Discuss before announcing');
+    headline = _ia?'قرار الإعلان على وسائل التواصل':'Social announcement decision';
+    rows += rowHtml(_ia?'قرار العميل':'Client decision', p.socialOk);
+    rows += rowHtml(_ia?'الحالة':'Status', flag);
+    rows += rowHtml(_ia?'المنتج':'Product', p.product);
+  } else if (which === 'account') {
+    headline = _ia?'تفضيلات العمل مع العميل':'How this client wants to work';
+    rows += rowHtml(_ia?'مسؤول المشروع':'Project owner', [p.ownerName,p.ownerRole].filter(Boolean).join(' · '));
+    rows += rowHtml(_ia?'التواصل':'Contact', [p.ownerEmail,p.ownerPhone].filter(Boolean).join(' · '));
+    rows += rowHtml(_ia?'أداة التواصل':'Preferred tool', p.commTool);
+    rows += rowHtml(_ia?'اللغة':'Language', p.commLanguage);
+    rows += rowHtml(_ia?'وتيرة الاجتماعات':'Meeting cadence', p.cadence);
+    rows += rowHtml(_ia?'مستوى التفصيل':'Detail level', p.detailLevel);
+    rows += rowHtml(_ia?'طريقة التحديثات':'Update format', p.updateFormat);
+    rows += rowHtml(_ia?'الأهداف':'Main goals', p.goals);
+    rows += rowHtml(_ia?'تعريف النجاح':'Definition of success', p.success);
+  } else {
+    headline = _ia?'إشارات التجربة':'Experience signals to act on';
+    rows += rowHtml(_ia?'أكبر تحدٍّ':'Biggest challenge', p.challenge);
+    rows += rowHtml(_ia?'مصادر الإزعاج':'Frustrations', p.frustration);
+    rows += rowHtml(_ia?'الشيء الاستثنائي':'One exceptional thing', p.oneThing);
+    rows += rowHtml(_ia?'أنظمة سابقة':'Used similar before', p.usedSimilar);
+  }
+
+  var dir = _ia ? 'rtl' : 'ltr';
+  var html = '<!DOCTYPE html><html dir="'+dir+'"><head><meta charset="utf-8"><title>'+esc(p.client)+' — '+t.label+'</title></head>'
+    + '<body style="margin:0;padding:24px;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;">'
+    + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" align="center" style="max-width:600px;width:100%;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e6e9ee;">'
+    // gradient header
+    + '<tr><td style="padding:0;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" bgcolor="'+t.accent+'" style="background:'+t.accent+';background:linear-gradient(90deg,'+t.accent+' 0%,'+t.accent2+' 100%);">'
+    + '<tr><td style="padding:26px 32px;text-align:center;">'
+    + '<img src="https://feedback-sessions.vercel.app/KABi_Logo_White.png" alt="KABi" width="130" style="width:130px;height:auto;display:block;margin:0 auto;border:0;">'
+    + '<div style="color:#fff;font-size:13px;letter-spacing:2px;margin-top:10px;opacity:.9;">'+t.icon+' '+esc(t.label.toUpperCase())+'</div>'
+    + '</td></tr></table></td></tr>'
+    // intro
+    + '<tr><td style="padding:28px 32px 6px;">'
+    + '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:'+t.accent+';font-weight:bold;">'+esc(headline)+'</div>'
+    + '<h1 style="font-size:22px;color:#1a2733;margin:6px 0 4px;">'+esc(p.client)+(p.product?(' <span style="font-size:14px;color:#8a97a6;">('+esc(p.product)+')</span>'):'')+'</h1>'
+    + '<p style="font-size:14px;color:#4a5866;line-height:1.6;margin:0 0 8px;">'
+    + (_ia?'وصل نموذج تفضيلات العميل عبر منصة KABi. فيما يلي ما يخصّ فريقكم:':'A client preferences form was submitted via the KABi platform. Here\'s what\'s relevant for your team:')
+    + '</p></td></tr>'
+    // rows
+    + '<tr><td style="padding:0 32px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">'+rows+'</table></td></tr>'
+    // footer
+    + '<tr><td style="background:#3D3185;padding:16px 32px;text-align:center;"><div style="color:#fff;font-size:11px;opacity:.85;">KABi • '+(_ia?'نُحسّن تجربة العميل باستمرار':'Continuously improving your client experience')+'</div></td></tr>'
+    + '</table>'
+    + '<div style="max-width:600px;margin:14px auto 0;text-align:center;font-size:12px;color:#8a97a6;">'
+    + (_ia?'انسخ هذا البريد (Ctrl+A ثم Ctrl+C) والصقه في Outlook وأرسله إلى: ':'Copy this email (Ctrl+A then Ctrl+C), paste into Outlook, and send to: ')
+    + '<strong>'+esc(t.to)+'</strong></div>'
+    + '</body></html>';
+
+  var w = window.open('', '_blank');
+  if (w) { w.document.write(html); w.document.close(); }
+  else { showToast(_ia?'اسمح بالنوافذ المنبثقة':'Allow pop-ups to open the email'); }
+}
+
 // Opens the user's email client (Outlook) with a pre-filled email to a team.
 function emailPrefShare(which) {
   var _ia = currentLang === 'ar';
@@ -2197,6 +2284,7 @@ function renderClientPrefs(name, _ia) {
       window._prefShare = { marketing: mkt, account: acct, delivery: deliv, full:
         acct + '\n\n' + deliv + (mkt?('\n\n'+mkt):'') };
       window._prefClient = p.client;
+      window._prefFull = p;
 
       html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">'
         + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin-bottom:8px;">' + (_ia?'مشاركة مع الفرق':'Share with teams') + '</div>'
@@ -2206,11 +2294,11 @@ function renderClientPrefs(name, _ia) {
         + '<button type="button" onclick="copyPrefShare(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">🛠 ' + (_ia?'نسخ ملخص التسليم':'Copy Delivery') + '</button>'
         + '<button type="button" onclick="copyPrefShare(\'full\')" style="border:1px solid var(--ink);background:var(--ink);color:#fff;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📋 ' + (_ia?'نسخ الكل':'Copy All') + '</button>'
         + '</div>'
-        + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:14px 0 8px;">' + (_ia?'إرسال بريد للفريق':'Email a team') + '</div>'
+        + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:14px 0 8px;">' + (_ia?'بريد مُصمّم للفريق':'Branded email to a team') + '</div>'
         + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
-        + (mkt ? ('<button type="button" onclick="emailPrefShare(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسويق':'Email Marketing') + '</button>') : '')
-        + '<button type="button" onclick="emailPrefShare(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد الحساب':'Email Account') + '</button>'
-        + '<button type="button" onclick="emailPrefShare(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسليم':'Email Delivery') + '</button>'
+        + (mkt ? ('<button type="button" onclick="openTeamEmail(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسويق':'Email Marketing') + '</button>') : '')
+        + '<button type="button" onclick="openTeamEmail(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد الحساب':'Email Account') + '</button>'
+        + '<button type="button" onclick="openTeamEmail(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسليم':'Email Delivery') + '</button>'
         + '</div></div>';
 
       box.innerHTML = html;
