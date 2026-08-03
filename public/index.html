@@ -1095,6 +1095,13 @@ function renderReport(analysisText, onPaper) {
   return '<div class="report' + (onPaper?' on-paper':'') + '">' + secs + '</div>';
 }
 
+// ─── TEAM EMAILS (for 'Prepare email' buttons — edit these to your real addresses) ─
+var TEAM_EMAILS = {
+  marketing: 'marketing@kabi.ai',
+  account:   'accounts@kabi.ai',
+  delivery:  'delivery@kabi.ai'
+};
+
 function copyPrefShare(which) {
   var _ia = currentLang === 'ar';
   var s = window._prefShare && window._prefShare[which] ? window._prefShare[which] : '';
@@ -1102,6 +1109,24 @@ function copyPrefShare(which) {
   navigator.clipboard.writeText(s).then(function(){
     showToast(_ia?'تم النسخ — جاهز للمشاركة':'Copied — ready to share');
   }).catch(function(){ showToast(_ia?'تعذّر النسخ':'Copy failed'); });
+}
+
+// Opens the user's email client (Outlook) with a pre-filled email to a team.
+function emailPrefShare(which) {
+  var _ia = currentLang === 'ar';
+  var clientName = window._prefClient || '';
+  var to = TEAM_EMAILS[which] || '';
+  var bodyText = window._prefShare && window._prefShare[which] ? window._prefShare[which] : '';
+  if (!bodyText) { showToast(_ia?'لا يوجد محتوى':'Nothing to send'); return; }
+  var teamName = { marketing:'Marketing', account:'Account', delivery:'Delivery' }[which] || which;
+  var subject = 'Client Preferences — ' + (clientName || '') + ' (for ' + teamName + ')';
+  var intro = (_ia
+    ? 'مرحباً فريق ' + teamName + '،\n\nفيما يلي تفضيلات العميل المستلمة عبر منصة KABi:\n\n'
+    : 'Hi ' + teamName + ' team,\n\nHere are the client preferences received via the KABi platform:\n\n');
+  var mailto = 'mailto:' + encodeURIComponent(to)
+    + '?subject=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(intro + bodyText);
+  window.location.href = mailto;
 }
 
 function copyAnalysis() {
@@ -2171,6 +2196,7 @@ function renderClientPrefs(name, _ia) {
 
       window._prefShare = { marketing: mkt, account: acct, delivery: deliv, full:
         acct + '\n\n' + deliv + (mkt?('\n\n'+mkt):'') };
+      window._prefClient = p.client;
 
       html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">'
         + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin-bottom:8px;">' + (_ia?'مشاركة مع الفرق':'Share with teams') + '</div>'
@@ -2179,6 +2205,12 @@ function renderClientPrefs(name, _ia) {
         + '<button type="button" onclick="copyPrefShare(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">👤 ' + (_ia?'نسخ ملخص الحساب':'Copy Account') + '</button>'
         + '<button type="button" onclick="copyPrefShare(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">🛠 ' + (_ia?'نسخ ملخص التسليم':'Copy Delivery') + '</button>'
         + '<button type="button" onclick="copyPrefShare(\'full\')" style="border:1px solid var(--ink);background:var(--ink);color:#fff;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📋 ' + (_ia?'نسخ الكل':'Copy All') + '</button>'
+        + '</div>'
+        + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:14px 0 8px;">' + (_ia?'إرسال بريد للفريق':'Email a team') + '</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
+        + (mkt ? ('<button type="button" onclick="emailPrefShare(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسويق':'Email Marketing') + '</button>') : '')
+        + '<button type="button" onclick="emailPrefShare(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد الحساب':'Email Account') + '</button>'
+        + '<button type="button" onclick="emailPrefShare(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسليم':'Email Delivery') + '</button>'
         + '</div></div>';
 
       box.innerHTML = html;
