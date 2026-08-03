@@ -2027,6 +2027,10 @@ function openClientPage(name, group) {
   h += '<div class="fb-block">' + cpHead('🚀','var(--accent-hyrdd-light)', T.onboarding, '')
     + '<div id="cp-onboarding"><div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div></div>';
 
+  // Client Preferences block
+  h += '<div class="fb-block">' + cpHead('⭐','var(--gold-light,#f6efd9)', (_ia?'تفضيلات العميل':'Client Preferences'), '')
+    + '<div id="cp-prefs"><div style="color:var(--ink-light);font-size:13px;">' + T.loading + '</div></div></div>';
+
   // Feedback Sessions block (header rendered inside cp-sessions by renderClientSessions)
   h += '<div class="fb-block"><div id="cp-sessions"></div></div>';
 
@@ -2080,6 +2084,66 @@ function openClientPage(name, group) {
   // --- In-app feedback sessions for this client (from localStorage) ---
   // --- Feedback Sessions: in-app (localStorage) + attached (Fireflies, server) ---
   renderClientSessions(name, _ia, T);
+  renderClientPrefs(name, _ia);
+}
+
+// Renders the Client Preferences block from the submitted form.
+function renderClientPrefs(name, _ia) {
+  var box = document.getElementById('cp-prefs');
+  if (!box) return;
+  fetch('/api/preferences?client=' + encodeURIComponent(name))
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var p = d && d.prefs;
+      if (!p) {
+        box.innerHTML = '<div style="color:var(--ink-light);font-size:13px;padding:.25rem 0;">'
+          + (_ia?'لم يُكمل العميل نموذج التفضيلات بعد.':'Client hasn\'t completed the preferences form yet.') + '</div>';
+        return;
+      }
+      function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+      function row(label, val){
+        if (!val) return '';
+        return '<div style="padding:9px 0;border-bottom:1px solid var(--rule);">'
+          + '<div style="font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-light);margin-bottom:3px;">' + label + '</div>'
+          + '<div style="font-size:13px;color:var(--ink);line-height:1.6;">' + esc(val) + '</div></div>';
+      }
+      var owner = [p.ownerName, p.ownerRole].filter(Boolean).join(' · ');
+      var contact = [p.ownerEmail, p.ownerPhone].filter(Boolean).join(' · ');
+      var L = _ia ? {
+        owner:'مسؤول المشروع', contact:'التواصل', tool:'أداة التواصل', lang:'اللغة', cadence:'وتيرة الاجتماعات',
+        detail:'مستوى التفصيل', updates:'طريقة التحديثات', goals:'الأهداف', success:'تعريف النجاح',
+        challenge:'أكبر تحدٍّ', similar:'أنظمة سابقة', onething:'الشيء الاستثنائي', frustration:'مصادر الإزعاج', social:'الإعلان على وسائل التواصل', when:'أُرسل في'
+      } : {
+        owner:'Project owner', contact:'Contact', tool:'Communication tool', lang:'Language', cadence:'Meeting cadence',
+        detail:'Detail level', updates:'Update format', goals:'Main goals', success:'Definition of success',
+        challenge:'Biggest challenge', similar:'Used similar before', onething:'One exceptional thing', frustration:'Frustrations', social:'Social announcement', when:'Submitted'
+      };
+      var quick = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">';
+      [p.commTool, p.commLanguage, p.cadence, p.detailLevel].forEach(function(v){
+        if(v) quick += '<span style="font-size:11px;background:var(--paper-warm);border:1px solid var(--rule);border-radius:14px;padding:3px 11px;color:var(--ink-mid);">' + esc(v) + '</span>';
+      });
+      if(p.socialOk) quick += '<span style="font-size:11px;background:var(--paper-warm);border:1px solid var(--rule);border-radius:14px;padding:3px 11px;color:var(--ink-mid);">'+L.social+': '+esc(p.socialOk)+'</span>';
+      quick += '</div>';
+
+      var html = quick;
+      html += row(L.owner, owner);
+      html += row(L.contact, contact);
+      html += row(L.updates, p.updateFormat);
+      html += row(L.goals, p.goals);
+      html += row(L.success, p.success);
+      html += row(L.challenge, p.challenge);
+      html += row(L.similar, p.usedSimilar);
+      html += row(L.onething, p.oneThing);
+      html += row(L.frustration, p.frustration);
+      if (p.submittedAt) {
+        var dt = new Date(p.submittedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'});
+        html += '<div style="font-size:11px;color:var(--ink-light);margin-top:10px;">' + L.when + ': ' + dt + '</div>';
+      }
+      box.innerHTML = html;
+    })
+    .catch(function(){
+      box.innerHTML = '<div style="color:var(--ink-light);font-size:13px;">' + (_ia?'تعذّر تحميل التفضيلات.':'Could not load preferences.') + '</div>';
+    });
 }
 
 // Renders the combined sessions (in-app Groq Whisper + Fireflies imports).
