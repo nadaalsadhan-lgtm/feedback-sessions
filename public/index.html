@@ -1095,11 +1095,12 @@ function renderReport(analysisText, onPaper) {
   return '<div class="report' + (onPaper?' on-paper':'') + '">' + secs + '</div>';
 }
 
-// ─── TEAM EMAILS (for 'Prepare email' buttons — edit these to your real addresses) ─
+// ─── TEAM EMAILS (for branded 'Email a team' buttons — edit to your real addresses) ─
+// marketing = Marketing · account = Account Manager (AM) · delivery = Customer Success (CS)
 var TEAM_EMAILS = {
-  marketing: 'marketing@kabi.ai',
-  account:   'accounts@kabi.ai',
-  delivery:  'delivery@kabi.ai'
+  marketing: 'marketing@kabi.ai',   // Marketing
+  account:   'am@kabi.ai',          // Account Manager (AM)
+  delivery:  'cs@kabi.ai'           // Customer Success (CS)
 };
 
 function copyPrefShare(which) {
@@ -1121,9 +1122,9 @@ function openTeamEmail(which) {
   var TEAM = {
     marketing: { label: _ia?'فريق التسويق':'Marketing Team', accent:'#0EB3AE', accent2:'#1EAFD9', icon:'📣',
       to: TEAM_EMAILS.marketing },
-    account:   { label: _ia?'فريق الحسابات':'Account Team', accent:'#216AB1', accent2:'#1EAFD9', icon:'👤',
+    account:   { label: _ia?'مدير الحساب':'Account Manager', accent:'#216AB1', accent2:'#1EAFD9', icon:'👤',
       to: TEAM_EMAILS.account },
-    delivery:  { label: _ia?'فريق التسليم':'Delivery Team', accent:'#3D3185', accent2:'#9B81BC', icon:'🛠',
+    delivery:  { label: _ia?'نجاح العملاء':'Customer Success', accent:'#3D3185', accent2:'#9B81BC', icon:'🤝',
       to: TEAM_EMAILS.delivery }
   };
   var t = TEAM[which]; if (!t) return;
@@ -2287,8 +2288,8 @@ function renderClientPrefs(name, _ia) {
         + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:0 0 8px;">' + (_ia?'بريد مُصمّم للفريق':'Branded email to a team') + '</div>'
         + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
         + (mkt ? ('<button type="button" onclick="openTeamEmail(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسويق':'Email Marketing') + '</button>') : '')
-        + '<button type="button" onclick="openTeamEmail(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد الحساب':'Email Account') + '</button>'
-        + '<button type="button" onclick="openTeamEmail(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسليم':'Email Delivery') + '</button>'
+        + '<button type="button" onclick="openTeamEmail(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد مدير الحساب':'Email AM') + '</button>'
+        + '<button type="button" onclick="openTeamEmail(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد نجاح العملاء':'Email CS') + '</button>'
         + '</div></div>';
 
       box.innerHTML = html;
