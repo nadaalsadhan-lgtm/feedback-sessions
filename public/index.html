@@ -1095,6 +1095,15 @@ function renderReport(analysisText, onPaper) {
   return '<div class="report' + (onPaper?' on-paper':'') + '">' + secs + '</div>';
 }
 
+function copyPrefShare(which) {
+  var _ia = currentLang === 'ar';
+  var s = window._prefShare && window._prefShare[which] ? window._prefShare[which] : '';
+  if (!s) { showToast(_ia?'لا يوجد محتوى':'Nothing to copy'); return; }
+  navigator.clipboard.writeText(s).then(function(){
+    showToast(_ia?'تم النسخ — جاهز للمشاركة':'Copied — ready to share');
+  }).catch(function(){ showToast(_ia?'تعذّر النسخ':'Copy failed'); });
+}
+
 function copyAnalysis() {
   const text = document.getElementById('analysisText').textContent;
   navigator.clipboard.writeText(text).then(() => showToast(currentLang==='ar'?'تم نسخ التحليل إلى الحافظة':'Analysis copied to clipboard'));
@@ -1934,6 +1943,8 @@ function openClientEditor(existingName) {
     + '<option value="INVIEWS"' + (cur.group==='INVIEWS'?' selected':'') + '>INVIEWS</option>'
     + '<option value="BOTH"' + (cur.group==='BOTH'?' selected':'') + '>HYRDD & INVIEWS</option>'
     + '</select>'
+    + '<label style="font-size:12px;color:var(--ink-light);display:block;margin-bottom:5px;">' + (_ia?'معرّف Pipedrive (اختياري)':'Pipedrive Org ID (optional)') + '</label>'
+    + '<input id="cePd" type="text" value="' + (cur.pipedriveId||'').replace(/"/g,'&quot;') + '" placeholder="' + (_ia?'مثال: 42':'e.g. 42') + '" style="width:100%;box-sizing:border-box;border:1px solid var(--rule);border-radius:8px;padding:10px 12px;font-size:14px;margin-bottom:20px;font-family:DM Sans,sans-serif;">'
     + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
     + '<button onclick="closeClientEditor()" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);border-radius:8px;font-size:13px;padding:9px 16px;cursor:pointer;">' + (_ia?'إلغاء':'Cancel') + '</button>'
     + '<button id="ceSave" style="border:none;background:var(--ink);color:#fff;border-radius:8px;font-size:13px;padding:9px 18px;cursor:pointer;">' + (_ia?'حفظ':'Save') + '</button>'
@@ -1942,11 +1953,12 @@ function openClientEditor(existingName) {
   document.getElementById('ceSave').addEventListener('click', function () {
     var name = document.getElementById('ceName').value.trim();
     var group = document.getElementById('ceGroup').value;
+    var pipedriveId = (document.getElementById('cePd') ? document.getElementById('cePd').value.trim() : '');
     if (!name) { alert(_ia?'أدخل اسم العميل':'Enter a client name'); return; }
     var btn = this; btn.disabled = true; btn.textContent = '…';
     var payload = editing
-      ? { action:'update', oldName: existingName, name: name, group: group }
-      : { action:'add', name: name, group: group };
+      ? { action:'update', oldName: existingName, name: name, group: group, pipedriveId: pipedriveId }
+      : { action:'add', name: name, group: group, pipedriveId: pipedriveId };
     fetch('/api/clients', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
       .then(function(r){ return r.json(); })
       .then(function(d){
@@ -2139,6 +2151,36 @@ function renderClientPrefs(name, _ia) {
         var dt = new Date(p.submittedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'});
         html += '<div style="font-size:11px;color:var(--ink-light);margin-top:10px;">' + L.when + ': ' + dt + '</div>';
       }
+
+      // ---- Per-team share summaries ----
+      var mkt = p.socialOk ? ('MARKETING — ' + p.client + '\n'
+        + 'Social announcement: ' + p.socialOk + '\n'
+        + (/^yes/i.test(p.socialOk) ? '✅ Approved to announce the partnership.' : (/^no/i.test(p.socialOk) ? '⛔ Do NOT announce.' : '💬 Discuss before announcing.'))) : '';
+      var acct = 'ACCOUNT TEAM — ' + p.client + (p.product?(' ('+p.product+')'):'') + '\n'
+        + [ p.ownerName?('Owner: '+p.ownerName+(p.ownerRole?(' · '+p.ownerRole):'')):'',
+            (p.ownerEmail||p.ownerPhone)?('Contact: '+[p.ownerEmail,p.ownerPhone].filter(Boolean).join(' · ')):'',
+            p.commTool?('Tool: '+p.commTool):'', p.commLanguage?('Language: '+p.commLanguage):'',
+            p.cadence?('Cadence: '+p.cadence):'', p.detailLevel?('Detail: '+p.detailLevel):'',
+            p.updateFormat?('Updates: '+p.updateFormat):'',
+            p.goals?('Goals: '+p.goals):'', p.success?('Success 3-6mo: '+p.success):'' ].filter(Boolean).join('\n');
+      var deliv = 'DELIVERY — ' + p.client + '\n'
+        + [ p.challenge?('Biggest challenge: '+p.challenge):'',
+            p.frustration?('Frustrations: '+p.frustration):'',
+            p.oneThing?('One exceptional thing: '+p.oneThing):'',
+            p.usedSimilar?('Used similar before: '+p.usedSimilar):'' ].filter(Boolean).join('\n');
+
+      window._prefShare = { marketing: mkt, account: acct, delivery: deliv, full:
+        acct + '\n\n' + deliv + (mkt?('\n\n'+mkt):'') };
+
+      html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">'
+        + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin-bottom:8px;">' + (_ia?'مشاركة مع الفرق':'Share with teams') + '</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
+        + (mkt ? ('<button type="button" onclick="copyPrefShare(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📣 ' + (_ia?'نسخ ملخص التسويق':'Copy Marketing') + '</button>') : '')
+        + '<button type="button" onclick="copyPrefShare(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">👤 ' + (_ia?'نسخ ملخص الحساب':'Copy Account') + '</button>'
+        + '<button type="button" onclick="copyPrefShare(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">🛠 ' + (_ia?'نسخ ملخص التسليم':'Copy Delivery') + '</button>'
+        + '<button type="button" onclick="copyPrefShare(\'full\')" style="border:1px solid var(--ink);background:var(--ink);color:#fff;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📋 ' + (_ia?'نسخ الكل':'Copy All') + '</button>'
+        + '</div></div>';
+
       box.innerHTML = html;
     })
     .catch(function(){
