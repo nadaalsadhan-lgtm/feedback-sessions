@@ -1146,7 +1146,6 @@ function openTeamEmail(which) {
     headline = _ia?'قرار الإعلان على وسائل التواصل':'Social announcement decision';
     rows += rowHtml(_ia?'قرار العميل':'Client decision', p.socialOk);
     rows += rowHtml(_ia?'الحالة':'Status', flag);
-    rows += rowHtml(_ia?'المنتج':'Product', p.product);
   } else if (which === 'account') {
     headline = _ia?'تفضيلات العمل مع العميل':'How this client wants to work';
     rows += rowHtml(_ia?'مسؤول المشروع':'Project owner', [p.ownerName,p.ownerRole].filter(Boolean).join(' · '));
@@ -1179,14 +1178,12 @@ function openTeamEmail(which) {
     // intro
     + '<tr><td style="padding:28px 32px 6px;">'
     + '<div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:'+t.accent+';font-weight:bold;">'+esc(headline)+'</div>'
-    + '<h1 style="font-size:22px;color:#1a2733;margin:6px 0 4px;">'+esc(p.client)+(p.product?(' <span style="font-size:14px;color:#8a97a6;">('+esc(p.product)+')</span>'):'')+'</h1>'
-    + '<p style="font-size:14px;color:#4a5866;line-height:1.6;margin:0 0 8px;">'
-    + (_ia?'وصل نموذج تفضيلات العميل عبر منصة KABi. فيما يلي ما يخصّ فريقكم:':'A client preferences form was submitted via the KABi platform. Here\'s what\'s relevant for your team:')
-    + '</p></td></tr>'
+    + '<h1 style="font-size:22px;color:#1a2733;margin:6px 0 12px;">'+esc(p.client)+'</h1>'
+    + '</td></tr>'
     // rows
     + '<tr><td style="padding:0 32px 20px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0">'+rows+'</table></td></tr>'
     // footer
-    + '<tr><td style="background:#3D3185;padding:16px 32px;text-align:center;"><div style="color:#fff;font-size:11px;opacity:.85;">KABi • '+(_ia?'نُحسّن تجربة العميل باستمرار':'Continuously improving your client experience')+'</div></td></tr>'
+    + '<tr><td style="background:#3D3185;padding:16px 32px;text-align:center;"><div style="color:#fff;font-size:11px;opacity:.85;">KABi</div></td></tr>'
     + '</table>'
     + '<div style="max-width:600px;margin:14px auto 0;text-align:center;font-size:12px;color:#8a97a6;">'
     + (_ia?'انسخ هذا البريد (Ctrl+A ثم Ctrl+C) والصقه في Outlook وأرسله إلى: ':'Copy this email (Ctrl+A then Ctrl+C), paste into Outlook, and send to: ')
@@ -2287,14 +2284,7 @@ function renderClientPrefs(name, _ia) {
       window._prefFull = p;
 
       html += '<div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--rule);">'
-        + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin-bottom:8px;">' + (_ia?'مشاركة مع الفرق':'Share with teams') + '</div>'
-        + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
-        + (mkt ? ('<button type="button" onclick="copyPrefShare(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📣 ' + (_ia?'نسخ ملخص التسويق':'Copy Marketing') + '</button>') : '')
-        + '<button type="button" onclick="copyPrefShare(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">👤 ' + (_ia?'نسخ ملخص الحساب':'Copy Account') + '</button>'
-        + '<button type="button" onclick="copyPrefShare(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">🛠 ' + (_ia?'نسخ ملخص التسليم':'Copy Delivery') + '</button>'
-        + '<button type="button" onclick="copyPrefShare(\'full\')" style="border:1px solid var(--ink);background:var(--ink);color:#fff;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📋 ' + (_ia?'نسخ الكل':'Copy All') + '</button>'
-        + '</div>'
-        + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:14px 0 8px;">' + (_ia?'بريد مُصمّم للفريق':'Branded email to a team') + '</div>'
+        + '<div style="font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-light);margin:0 0 8px;">' + (_ia?'بريد مُصمّم للفريق':'Branded email to a team') + '</div>'
         + '<div style="display:flex;flex-wrap:wrap;gap:8px;">'
         + (mkt ? ('<button type="button" onclick="openTeamEmail(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسويق':'Email Marketing') + '</button>') : '')
         + '<button type="button" onclick="openTeamEmail(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد الحساب':'Email Account') + '</button>'
