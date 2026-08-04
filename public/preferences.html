@@ -21,21 +21,28 @@
   .langbar{display:flex;justify-content:center;gap:8px;margin:14px 0 0;}
   .langbar button{border:1px solid var(--rule);background:#fff;color:var(--ink-mid);border-radius:20px;padding:6px 16px;font-size:13px;cursor:pointer;}
   .langbar button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-  .section{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:22px 22px 8px;margin:18px 0;}
-  .section-title{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--topaz);font-weight:bold;margin:0 0 4px;}
-  .section-sub{font-size:12px;color:var(--ink-light);margin:0 0 18px;}
+  .section{position:relative;background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:24px 24px 10px 26px;margin:20px 0;box-shadow:0 4px 18px rgba(20,40,60,.05);overflow:hidden;}
+  /* colored left accent bar per section */
+  .section::before{content:"";position:absolute;top:0;left:0;bottom:0;width:5px;background:var(--sc,#216AB1);}
+  [dir=rtl] .section::before{left:auto;right:0;}
+  [dir=rtl] .section{padding:24px 26px 10px 24px;}
+  .section-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .section-badge{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--sc-light,#e8f1f9);flex-shrink:0;}
+  .section-title{font-size:16px;font-weight:bold;color:var(--sc,#216AB1);margin:0;line-height:1.2;}
+  .section-sub{font-size:12px;color:var(--ink-light);margin:2px 0 0;}
   .field{margin-bottom:18px;}
   .field label{display:block;font-size:14px;font-weight:bold;color:var(--ink);margin-bottom:7px;}
   .field label .req{color:#d64545;margin:0 3px;}
   .field .hint{font-weight:normal;color:var(--ink-light);font-size:12px;}
   input[type=text],input[type=email],input[type=tel],textarea,select{
-    width:100%;border:1.5px solid var(--rule);border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);
+    width:100%;border:1.5px solid var(--rule);border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);transition:border-color .15s;
   }
   textarea{resize:vertical;min-height:74px;}
-  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--turq);}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--sc,#1EAFD9);box-shadow:0 0 0 3px var(--sc-glow,rgba(30,175,217,.12));}
   .chips{display:flex;flex-wrap:wrap;gap:8px;}
-  .chip{border:1.5px solid var(--rule);background:#fff;border-radius:22px;padding:8px 16px;font-size:13px;cursor:pointer;color:var(--ink-mid);user-select:none;}
-  .chip.sel{background:var(--topaz);border-color:var(--topaz);color:#fff;}
+  .chip{border:1.5px solid var(--rule);background:#fff;border-radius:22px;padding:8px 16px;font-size:13px;cursor:pointer;color:var(--ink-mid);user-select:none;transition:all .15s;}
+  .chip:hover{border-color:var(--sc,#1EAFD9);}
+  .chip.sel{background:var(--sc,#0EB3AE);border-color:var(--sc,#0EB3AE);color:#fff;box-shadow:0 2px 8px var(--sc-glow,rgba(14,179,174,.3));}
   .row2{display:flex;gap:12px;}
   .row2 .field{flex:1;}
   .submit{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:6px;}
@@ -65,9 +72,14 @@
   <form id="prefForm" onsubmit="return submitForm(event)">
 
     <!-- SECTION 1: About you -->
-    <div class="section">
-      <div class="section-title" data-en="About you" data-ar="بيانات التواصل">About you</div>
-      <div class="section-sub" data-en="Who we'll be working with day to day." data-ar="نقطة الاتصال الرئيسية">Who we'll be working with day to day.</div>
+    <div class="section" style="--sc:#216AB1;--sc-light:#e8f1f9;--sc-glow:rgba(33,106,177,.26);">
+      <div class="section-head">
+        <div class="section-badge">👤</div>
+        <div>
+          <div class="section-title" data-en="About you" data-ar="بيانات التواصل">About you</div>
+          <div class="section-sub" data-en="Who we'll be working with day to day." data-ar="نقطة الاتصال الرئيسية">Who we'll be working with day to day.</div>
+        </div>
+      </div>
       <div class="row2">
         <div class="field">
           <label data-en="Project owner name" data-ar="اسم مدير المشروع">Project owner name</label>
@@ -91,13 +103,18 @@
     </div>
 
     <!-- SECTION 2: How we'll work together -->
-    <div class="section">
-      <div class="section-title" data-en="Communication Preferences" data-ar="تفضيلات التواصل">Communication Preferences</div>
-      <div class="section-sub" data-en="How you'd like us to reach you." data-ar="كيف تودّ أن نتواصل معك.">How you'd like us to reach you.</div>
+    <div class="section" style="--sc:#1EAFD9;--sc-light:#e4f6fb;--sc-glow:rgba(30,175,217,.26);">
+      <div class="section-head">
+        <div class="section-badge">💬</div>
+        <div>
+          <div class="section-title" data-en="Communication Preferences" data-ar="تفضيلات التواصل">Communication Preferences</div>
+          <div class="section-sub" data-en="How you'd like us to reach you." data-ar="كيف تودّ أن نتواصل معك.">How you'd like us to reach you.</div>
+        </div>
+      </div>
 
       <div class="field">
-        <label data-en="Preferred communication tool" data-ar="وسيلة التواصل المفضّلة">Preferred communication tool</label>
-        <div class="chips" data-chipgroup="commTool">
+        <label data-en="Preferred communication tool" data-ar="وسيلة التواصل المفضّلة">Preferred communication tool <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
+        <div class="chips" data-multigroup="commTool">
           <span class="chip" data-val="Email" data-en="Email" data-ar="البريد الإلكتروني">Email</span>
           <span class="chip" data-val="Phone" data-en="Phone" data-ar="الهاتف">Phone</span>
           <span class="chip" data-val="WhatsApp" data-en="WhatsApp" data-ar="واتساب">WhatsApp</span>
@@ -115,24 +132,56 @@
     </div>
 
     <!-- SECTION 3: Goals & context -->
-    <div class="section">
-      <div class="section-title" data-en="Goals & Challenges" data-ar="الأهداف والتحديات">Goals & Challenges</div>
-      <div class="section-sub" data-en="What you want to achieve, and what's in the way." data-ar="شاركنا أهدافك والتحديات التي تواجهها.">What you want to achieve, and what's in the way.</div>
+    <div class="section" style="--sc:#0EB3AE;--sc-light:#e0f5f4;--sc-glow:rgba(14,179,174,.26);">
+      <div class="section-head">
+        <div class="section-badge">🎯</div>
+        <div>
+          <div class="section-title" data-en="Goals & Challenges" data-ar="الأهداف والتحديات">Goals & Challenges</div>
+          <div class="section-sub" data-en="What you want to achieve, and what's in the way." data-ar="شاركنا أهدافك والتحديات التي تواجهها.">What you want to achieve, and what's in the way.</div>
+        </div>
+      </div>
 
       <div class="field">
-        <label data-en="What are your main goals for this project?" data-ar="ما أهدافك الرئيسية من هذا المشروع؟">What are your main goals for this project?</label>
-        <textarea name="goals"></textarea>
+        <label data-en="What are your main goals for this project?" data-ar="ما أهدافك الرئيسية من هذا المشروع؟">What are your main goals for this project? <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
+        <div class="chips" data-multigroup="goals">
+          <span class="chip" data-val="Speed up and streamline hiring" data-en="Speed up and streamline hiring" data-ar="تسريع وتبسيط التوظيف">Speed up and streamline hiring</span>
+          <span class="chip" data-val="Improve quality and accuracy of candidate selection" data-en="Improve quality and accuracy of candidate selection" data-ar="تحسين جودة ودقة اختيار المرشحين">Improve quality and accuracy of candidate selection</span>
+          <span class="chip" data-val="Make assessments fairer and bias-free" data-en="Make assessments fairer and bias-free" data-ar="جعل التقييمات أكثر عدلاً وخالية من التحيّز">Make assessments fairer and bias-free</span>
+          <span class="chip" data-val="Better workforce & manpower planning" data-en="Better workforce & manpower planning" data-ar="تخطيط أفضل للقوى العاملة">Better workforce & manpower planning</span>
+          <span class="chip" data-val="Stronger data, analytics & reporting" data-en="Stronger data, analytics & reporting" data-ar="بيانات وتحليلات وتقارير أقوى">Stronger data, analytics & reporting</span>
+          <span class="chip" data-val="Reduce hiring costs" data-en="Reduce hiring costs" data-ar="خفض تكاليف التوظيف">Reduce hiring costs</span>
+          <span class="chip" data-val="Improve the candidate & onboarding experience" data-en="Improve the candidate & onboarding experience" data-ar="تحسين تجربة المرشح والانضمام">Improve the candidate & onboarding experience</span>
+          <span class="chip" data-val="Support growth & scaling across teams" data-en="Support growth & scaling across teams" data-ar="دعم النمو والتوسع عبر الفرق">Support growth & scaling across teams</span>
+          <span class="chip chip-other" data-val="__other__" data-en="Other" data-ar="أخرى">Other</span>
+        </div>
+        <textarea name="goalsOther" class="other-box" data-for="goals" style="display:none;margin-top:10px;" data-ph-en="Tell us more…" data-ph-ar="أخبرنا المزيد…"></textarea>
       </div>
       <div class="field">
-        <label data-en="What is your biggest challenge today?" data-ar="ما أكبر تحدٍّ تواجهه اليوم؟">What is your biggest challenge today?</label>
-        <textarea name="challenge"></textarea>
+        <label data-en="What is your biggest challenge today?" data-ar="ما أكبر تحدٍّ تواجهه اليوم؟">What is your biggest challenge today? <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
+        <div class="chips" data-multigroup="challenge">
+          <span class="chip" data-val="Too many manual, repetitive steps" data-en="Too many manual, repetitive steps" data-ar="خطوات يدوية ومتكررة كثيرة">Too many manual, repetitive steps</span>
+          <span class="chip" data-val="Disconnected systems / no single view" data-en="Disconnected systems / no single view" data-ar="أنظمة غير مترابطة / لا توجد رؤية موحّدة">Disconnected systems / no single view</span>
+          <span class="chip" data-val="Hard to align multiple stakeholders" data-en="Hard to align multiple stakeholders" data-ar="صعوبة مواءمة أصحاب المصلحة المتعددين">Hard to align multiple stakeholders</span>
+          <span class="chip" data-val="Limited budget or resources" data-en="Limited budget or resources" data-ar="ميزانية أو موارد محدودة">Limited budget or resources</span>
+          <span class="chip" data-val="Team resistance to new tools" data-en="Team resistance to new tools" data-ar="مقاومة الفريق للأدوات الجديدة">Team resistance to new tools</span>
+          <span class="chip" data-val="Difficulty proving ROI / measuring impact" data-en="Difficulty proving ROI / measuring impact" data-ar="صعوبة إثبات العائد / قياس الأثر">Difficulty proving ROI / measuring impact</span>
+          <span class="chip" data-val="Compliance & governance pressure" data-en="Compliance & governance pressure" data-ar="ضغوط الامتثال والحوكمة">Compliance & governance pressure</span>
+          <span class="chip" data-val="Keeping up with hiring volume" data-en="Keeping up with hiring volume" data-ar="مواكبة حجم التوظيف">Keeping up with hiring volume</span>
+          <span class="chip chip-other" data-val="__other__" data-en="Other" data-ar="أخرى">Other</span>
+        </div>
+        <textarea name="challengeOther" class="other-box" data-for="challenge" style="display:none;margin-top:10px;" data-ph-en="Tell us more…" data-ph-ar="أخبرنا المزيد…"></textarea>
       </div>
     </div>
 
     <!-- SECTION 4: Making it exceptional -->
-    <div class="section">
-      <div class="section-title" data-en="Partnership Announcement" data-ar="الإعلان عن الشراكة">Partnership Announcement</div>
-      <div class="section-sub" data-en="Sharing the news of our partnership." data-ar="شاركنا تفضيلك بشأن الإعلان عن شراكتنا.">Sharing the news of our partnership.</div>
+    <div class="section" style="--sc:#3D3185;--sc-light:#ebe8f5;--sc-glow:rgba(61,49,133,.24);">
+      <div class="section-head">
+        <div class="section-badge">📣</div>
+        <div>
+          <div class="section-title" data-en="Partnership Announcement" data-ar="الإعلان عن الشراكة">Partnership Announcement</div>
+          <div class="section-sub" data-en="Sharing the news of our partnership." data-ar="شاركنا تفضيلك بشأن الإعلان عن شراكتنا.">Sharing the news of our partnership.</div>
+        </div>
+      </div>
 
       <div class="field">
         <label data-en="We'd love to announce our partnership on social media. Is this okay with you?" data-ar="يسعدنا الإعلان عن شراكتنا على وسائل التواصل الاجتماعي. هل هذا مناسب لك؟">We'd love to announce our partnership on social media. Is this okay with you?</label>
@@ -188,7 +237,7 @@
   }
 
   // chip single-select
-  document.querySelectorAll('.chips').forEach(function(group){
+  document.querySelectorAll('.chips[data-chipgroup]').forEach(function(group){
     var key = group.getAttribute('data-chipgroup');
     group.querySelectorAll('.chip').forEach(function(chip){
       chip.addEventListener('click', function(){
@@ -198,6 +247,27 @@
       });
     });
   });
+
+  // chip MULTI-select (goals, challenge) + "Other" reveals a text box
+  var multi = {}; // key -> array of selected values
+  document.querySelectorAll('.chips[data-multigroup]').forEach(function(group){
+    var key = group.getAttribute('data-multigroup');
+    multi[key] = [];
+    group.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        var val = chip.getAttribute('data-val');
+        var on = chip.classList.toggle('sel');
+        if (on) { if (multi[key].indexOf(val)===-1) multi[key].push(val); }
+        else { multi[key] = multi[key].filter(function(v){ return v!==val; }); }
+        // toggle the Other text box for this group
+        if (val === '__other__') {
+          var box = document.querySelector('.other-box[data-for="'+key+'"]');
+          if (box) box.style.display = on ? 'block' : 'none';
+        }
+      });
+    });
+  });
+  window._multiSel = multi;
 
   // Mark every field label as required (red asterisk)
   document.querySelectorAll('.field label').forEach(function(lbl){
@@ -213,16 +283,28 @@
     var _ar = (currentLang === 'ar');
 
     // ---- Validate: all fields required ----
+    var multi = window._multiSel || {goals:[],challenge:[]};
+    // build goals / challenge values (join selected + Other text)
+    function buildMulti(key, otherField){
+      var vals = (multi[key]||[]).filter(function(v){return v!=='__other__';});
+      var other = f[otherField] ? f[otherField].value.trim() : '';
+      if ((multi[key]||[]).indexOf('__other__')!==-1 && other) vals.push(other);
+      return vals.join('; ');
+    }
+    var goalsVal = buildMulti('goals','goalsOther');
+    var challengeVal = buildMulti('challenge','challengeOther');
+    var toolVal = (multi['commTool']||[]).filter(function(v){return v!=='__other__';}).join(', ');
+
     var missing = [];
     function need(val, labelEn, labelAr){ if(!val || !val.toString().trim()) missing.push(_ar?labelAr:labelEn); }
     need(f.ownerName.value,  'Project owner name', 'اسم مدير المشروع');
     need(f.ownerRole.value,  'Role / title', 'المسمى الوظيفي');
     need(f.ownerEmail.value, 'Email', 'البريد الإلكتروني');
     need(f.ownerPhone.value, 'Phone', 'رقم الهاتف');
-    need(selections.commTool,     'Preferred communication tool', 'وسيلة التواصل المفضّلة');
+    need(toolVal,                 'Preferred communication tool', 'وسيلة التواصل المفضّلة');
     need(selections.commLanguage, 'Preferred communication language', 'لغة التواصل المفضّلة');
-    need(f.goals.value,     'Main goals', 'الأهداف الرئيسية');
-    need(f.challenge.value, 'Biggest challenge', 'أكبر تحدٍّ');
+    need(goalsVal,     'Main goals', 'الأهداف الرئيسية');
+    need(challengeVal, 'Biggest challenge', 'أكبر تحدٍّ');
     need(selections.socialOk, 'Social media announcement', 'الإعلان على وسائل التواصل');
 
     // basic email sanity
@@ -239,8 +321,8 @@
       client: CLIENT, product: PRODUCT,
       ownerName: f.ownerName.value, ownerRole: f.ownerRole.value,
       ownerEmail: f.ownerEmail.value, ownerPhone: f.ownerPhone.value,
-      commTool: selections.commTool||'', commLanguage: selections.commLanguage||'',
-      goals: f.goals.value, challenge: f.challenge.value,
+      commTool: toolVal, commLanguage: selections.commLanguage||'',
+      goals: goalsVal, challenge: challengeVal,
       socialOk: selections.socialOk||''
     };
     var btn = f.querySelector('.submit');
