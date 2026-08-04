@@ -2018,12 +2018,87 @@ function renderManageList() {
     + '<button onclick="closeManageClients()" style="border:none;background:transparent;font-size:22px;cursor:pointer;color:#999;">&times;</button></div>'
     + '<div style="font-size:12px;color:var(--ink-light);margin-bottom:14px;">' + (CLIENTS||[]).length + ' ' + (_ia?'عميل':'clients') + '</div>'
     + '<button type="button" onclick="openClientEditor()" style="background:var(--ink);color:#fff;border:none;border-radius:8px;font-size:12px;padding:9px 16px;cursor:pointer;margin-bottom:14px;align-self:flex-start;">+ ' + (_ia?'إضافة عميل':'Add client') + '</button>'
+    + '<button type="button" onclick="matchPipedrive()" style="background:transparent;color:var(--ink-mid);border:1px solid var(--rule);border-radius:8px;font-size:12px;padding:9px 16px;cursor:pointer;margin:0 0 14px 8px;align-self:flex-start;">🔗 ' + (_ia?'مطابقة Pipedrive':'Match Pipedrive IDs') + '</button>'
     + '<div style="overflow-y:auto;flex:1;border-top:1px solid var(--rule);">' + (rows || ('<div style="padding:1rem 0;color:var(--ink-light);font-size:13px;">' + (_ia?'لا يوجد عملاء.':'No clients yet.') + '</div>')) + '</div>'
     + '</div>';
 }
 
 function closeManageClients() {
   var o = document.getElementById('manageClientsOverlay');
+  if (o) o.style.display = 'none';
+}
+
+// Auto-match all clients to Pipedrive deals, show a review list, save on confirm.
+function matchPipedrive() {
+  var _ia = currentLang === 'ar';
+  showToast(_ia?'جارٍ البحث في Pipedrive…':'Searching Pipedrive…');
+  fetch('/api/clients', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'matchPipedrive' }) })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d.ok) { alert((_ia?'خطأ: ':'Error: ') + (d.error||'')); return; }
+      renderMatchReview(d.results || []);
+    })
+    .catch(function(e){ alert(e.message); });
+}
+
+function renderMatchReview(results) {
+  var _ia = currentLang === 'ar';
+  var overlay = document.getElementById('pdMatchOverlay');
+  if (!overlay) {
+    overlay = document.createElement('div');
+    overlay.id = 'pdMatchOverlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:10000;';
+    document.body.appendChild(overlay);
+  }
+  overlay.style.display = 'flex';
+
+  var rows = results.map(function(r, i){
+    var matched = r.match;
+    var status = matched
+      ? '<span style="color:#2d7a2d;font-size:12px;">✓ ' + (r.match.title||'').replace(/</g,'&lt;') + ' (#' + r.match.id + ')</span>'
+      : '<span style="color:#b04a4a;font-size:12px;">' + (_ia?'لا يوجد تطابق':'No match') + '</span>';
+    var val = matched ? r.match.id : (r.current||'');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);">'
+      + '<div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:500;color:var(--ink);">' + r.name.replace(/</g,'&lt;') + '</div>'
+      + '<div>' + status + (r.current ? (' <span style="color:var(--ink-light);font-size:11px;">'+(_ia?'حالياً':'now')+': '+r.current+'</span>') : '') + '</div></div>'
+      + '<input type="text" data-mname="' + r.name.replace(/"/g,'&quot;') + '" value="' + val + '" placeholder="ID" style="width:90px;border:1px solid var(--rule);border-radius:6px;padding:6px 8px;font-size:13px;text-align:center;">'
+      + '</div>';
+  }).join('');
+
+  var matchedCount = results.filter(function(r){return r.match;}).length;
+  overlay.innerHTML = '<div style="background:#fff;max-width:600px;width:92%;max-height:84vh;display:flex;flex-direction:column;border-radius:14px;padding:22px 24px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+    + '<strong style="font-size:18px;font-family:\'DM Serif Display\',serif;">' + (_ia?'مطابقة Pipedrive':'Match Pipedrive Deals') + '</strong>'
+    + '<button onclick="closePdMatch()" style="border:none;background:transparent;font-size:22px;cursor:pointer;color:#999;">&times;</button></div>'
+    + '<div style="font-size:12px;color:var(--ink-light);margin-bottom:14px;">' + matchedCount + '/' + results.length + ' ' + (_ia?'تم العثور على تطابق. راجع وعدّل معرّفات الصفقات قبل الحفظ.':'matched. Review and edit the Deal IDs before saving.') + '</div>'
+    + '<div style="overflow-y:auto;flex:1;border-top:1px solid var(--rule);">' + rows + '</div>'
+    + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">'
+    + '<button onclick="closePdMatch()" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);border-radius:8px;font-size:13px;padding:9px 16px;cursor:pointer;">' + (_ia?'إلغاء':'Cancel') + '</button>'
+    + '<button id="pdSaveBtn" style="border:none;background:var(--ink);color:#fff;border-radius:8px;font-size:13px;padding:9px 18px;cursor:pointer;">' + (_ia?'حفظ المعرّفات':'Save IDs') + '</button>'
+    + '</div></div>';
+
+  document.getElementById('pdSaveBtn').addEventListener('click', function(){
+    var updates = {};
+    overlay.querySelectorAll('input[data-mname]').forEach(function(inp){
+      var nm = inp.getAttribute('data-mname');
+      var v = inp.value.trim();
+      if (v) updates[nm] = v;
+    });
+    var btn = this; btn.disabled = true; btn.textContent = '…';
+    fetch('/api/clients', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ action:'savePipedriveIds', updates: updates }) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (!d.ok) { alert((_ia?'خطأ: ':'Error: ')+(d.error||'')); btn.disabled=false; btn.textContent=(_ia?'حفظ المعرّفات':'Save IDs'); return; }
+        CLIENTS = d.clients || CLIENTS;
+        closePdMatch();
+        showToast(_ia?'تم حفظ معرّفات Pipedrive':'Pipedrive IDs saved');
+      })
+      .catch(function(e){ alert(e.message); btn.disabled=false; btn.textContent=(_ia?'حفظ المعرّفات':'Save IDs'); });
+  });
+}
+
+function closePdMatch() {
+  var o = document.getElementById('pdMatchOverlay');
   if (o) o.style.display = 'none';
 }
 
