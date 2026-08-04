@@ -26,6 +26,7 @@
   .section-sub{font-size:12px;color:var(--ink-light);margin:0 0 18px;}
   .field{margin-bottom:18px;}
   .field label{display:block;font-size:14px;font-weight:bold;color:var(--ink);margin-bottom:7px;}
+  .field label .req{color:#d64545;margin:0 3px;}
   .field .hint{font-weight:normal;color:var(--ink-light);font-size:12px;}
   input[type=text],input[type=email],input[type=tel],textarea,select{
     width:100%;border:1.5px solid var(--rule);border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);
@@ -43,7 +44,6 @@
   .thanks{display:none;text-align:center;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:44px 24px;margin:24px 0;}
   .thanks .tick{width:64px;height:64px;border-radius:50%;background:var(--topaz);color:#fff;font-size:34px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;}
   .thanks h2{color:var(--blue);margin:0 0 8px;}
-  [dir=rtl] .row2{flex-direction:row-reverse;}
   @media(max-width:520px){ .row2{flex-direction:column;gap:0;} }
 </style>
 </head>
@@ -55,7 +55,7 @@
 <div class="wrap">
   <div class="head">
     <h1 data-en="Let's tailor your experience" data-ar="لنُصمّم تجربتك">Let's tailor your experience</h1>
-    <p data-en="Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences. This takes about 5 minutes." data-ar="مرحباً بك في KABi. لكي تسير شراكتنا بالطريقة التي تناسبك، نودّ أن نتعرّف على تفضيلاتك. يستغرق هذا حوالي ٥ دقائق.">Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences. This takes about 5 minutes.</p>
+    <p data-en="Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences." data-ar="مرحباً بك في KABi. لكي تسير شراكتنا بالطريقة التي تناسبك، نودّ أن نتعرّف على تفضيلاتك.">Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences.</p>
     <div class="langbar">
       <button id="lang-en" class="active" onclick="setLang('en')">English</button>
       <button id="lang-ar" onclick="setLang('ar')">العربية</button>
@@ -66,11 +66,11 @@
 
     <!-- SECTION 1: About you -->
     <div class="section">
-      <div class="section-title" data-en="About you" data-ar="عنك">About you</div>
-      <div class="section-sub" data-en="Who we'll be working with day to day." data-ar="من سنعمل معه يومياً.">Who we'll be working with day to day.</div>
+      <div class="section-title" data-en="About you" data-ar="بيانات التواصل">About you</div>
+      <div class="section-sub" data-en="Who we'll be working with day to day." data-ar="نقطة الاتصال الرئيسية">Who we'll be working with day to day.</div>
       <div class="row2">
         <div class="field">
-          <label data-en="Project owner name" data-ar="اسم مسؤول المشروع">Project owner name</label>
+          <label data-en="Project owner name" data-ar="اسم مدير المشروع">Project owner name</label>
           <input type="text" name="ownerName">
         </div>
         <div class="field">
@@ -92,17 +92,16 @@
 
     <!-- SECTION 2: How we'll work together -->
     <div class="section">
-      <div class="section-title" data-en="How we'll work together" data-ar="كيف سنعمل معاً">How we'll work together</div>
-      <div class="section-sub" data-en="Your preferred rhythm and channels." data-ar="الإيقاع والقنوات المفضّلة لديك.">Your preferred rhythm and channels.</div>
+      <div class="section-title" data-en="Communication Preferences" data-ar="تفضيلات التواصل">Communication Preferences</div>
+      <div class="section-sub" data-en="How you'd like us to reach you." data-ar="كيف تودّ أن نتواصل معك.">How you'd like us to reach you.</div>
 
       <div class="field">
-        <label data-en="Preferred communication tool" data-ar="أداة التواصل المفضّلة">Preferred communication tool</label>
+        <label data-en="Preferred communication tool" data-ar="وسيلة التواصل المفضّلة">Preferred communication tool</label>
         <div class="chips" data-chipgroup="commTool">
           <span class="chip" data-val="Email" data-en="Email" data-ar="البريد الإلكتروني">Email</span>
           <span class="chip" data-val="Phone" data-en="Phone" data-ar="الهاتف">Phone</span>
           <span class="chip" data-val="WhatsApp" data-en="WhatsApp" data-ar="واتساب">WhatsApp</span>
           <span class="chip" data-val="Teams" data-en="Teams" data-ar="Teams">Teams</span>
-          <span class="chip" data-val="Slack" data-en="Slack" data-ar="Slack">Slack</span>
         </div>
       </div>
 
@@ -113,70 +112,30 @@
           <span class="chip" data-val="English" data-en="English" data-ar="الإنجليزية">English</span>
         </div>
       </div>
-
-      <div class="field">
-        <label data-en="Preferred meeting cadence" data-ar="وتيرة الاجتماعات المفضّلة">Preferred meeting cadence</label>
-        <div class="chips" data-chipgroup="cadence">
-          <span class="chip" data-val="Weekly" data-en="Weekly" data-ar="أسبوعياً">Weekly</span>
-          <span class="chip" data-val="Biweekly" data-en="Biweekly" data-ar="كل أسبوعين">Biweekly</span>
-          <span class="chip" data-val="Monthly" data-en="Monthly" data-ar="شهرياً">Monthly</span>
-          <span class="chip" data-val="As needed" data-en="As needed" data-ar="عند الحاجة">As needed</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <label data-en="Do you prefer short updates or detailed reports?" data-ar="هل تفضّل تحديثات موجزة أم تقارير مفصّلة؟">Do you prefer short updates or detailed reports?</label>
-        <div class="chips" data-chipgroup="detailLevel">
-          <span class="chip" data-val="Short updates" data-en="Short updates" data-ar="تحديثات موجزة">Short updates</span>
-          <span class="chip" data-val="Detailed reports" data-en="Detailed reports" data-ar="تقارير مفصّلة">Detailed reports</span>
-          <span class="chip" data-val="A mix" data-en="A mix" data-ar="مزيج">A mix</span>
-        </div>
-      </div>
-
-      <div class="field">
-        <label data-en="How would you like to receive project updates?" data-ar="كيف تودّ تلقّي تحديثات المشروع؟">How would you like to receive project updates?</label>
-        <textarea name="updateFormat" data-ph-en="e.g. a weekly email summary, a live dashboard, a monthly call…" data-ph-ar="مثال: ملخص أسبوعي بالبريد، لوحة مباشرة، مكالمة شهرية…"></textarea>
-      </div>
     </div>
 
     <!-- SECTION 3: Goals & context -->
     <div class="section">
-      <div class="section-title" data-en="Your goals & context" data-ar="أهدافك والسياق">Your goals & context</div>
-      <div class="section-sub" data-en="What success looks like for you." data-ar="كيف يبدو النجاح بالنسبة لك.">What success looks like for you.</div>
+      <div class="section-title" data-en="Goals & Challenges" data-ar="الأهداف والتحديات">Goals & Challenges</div>
+      <div class="section-sub" data-en="What you want to achieve, and what's in the way." data-ar="شاركنا أهدافك والتحديات التي تواجهها.">What you want to achieve, and what's in the way.</div>
 
       <div class="field">
         <label data-en="What are your main goals for this project?" data-ar="ما أهدافك الرئيسية من هذا المشروع؟">What are your main goals for this project?</label>
         <textarea name="goals"></textarea>
       </div>
       <div class="field">
-        <label data-en="How would you define success in 3–6 months?" data-ar="كيف تُعرّف النجاح خلال ٣ إلى ٦ أشهر؟">How would you define success in 3–6 months?</label>
-        <textarea name="success"></textarea>
-      </div>
-      <div class="field">
         <label data-en="What is your biggest challenge today?" data-ar="ما أكبر تحدٍّ تواجهه اليوم؟">What is your biggest challenge today?</label>
         <textarea name="challenge"></textarea>
-      </div>
-      <div class="field">
-        <label data-en="Have you used a similar system before?" data-ar="هل استخدمت نظاماً مشابهاً من قبل؟">Have you used a similar system before? <span class="hint" data-en="If so, what worked or didn't?" data-ar="إن كان كذلك، ما الذي نجح وما الذي لم ينجح؟">If so, what worked or didn't?</span></label>
-        <textarea name="usedSimilar"></textarea>
       </div>
     </div>
 
     <!-- SECTION 4: Making it exceptional -->
     <div class="section">
-      <div class="section-title" data-en="Making it exceptional" data-ar="لنجعلها استثنائية">Making it exceptional</div>
-      <div class="section-sub" data-en="Help us go above and beyond." data-ar="ساعدنا لنتجاوز توقّعاتك.">Help us go above and beyond.</div>
+      <div class="section-title" data-en="Partnership Announcement" data-ar="الإعلان عن الشراكة">Partnership Announcement</div>
+      <div class="section-sub" data-en="Sharing the news of our partnership." data-ar="شاركنا تفضيلك بشأن الإعلان عن شراكتنا.">Sharing the news of our partnership.</div>
 
       <div class="field">
-        <label data-en="If we could do one thing to make your experience exceptional, what would it be?" data-ar="لو كان بإمكاننا فعل شيء واحد لجعل تجربتك استثنائية، فماذا سيكون؟">If we could do one thing to make your experience exceptional, what would it be?</label>
-        <textarea name="oneThing"></textarea>
-      </div>
-      <div class="field">
-        <label data-en="What frustrates you most when working with a service provider?" data-ar="ما الذي يزعجك أكثر عند التعامل مع مزوّد خدمة؟">What frustrates you most when working with a service provider?</label>
-        <textarea name="frustration"></textarea>
-      </div>
-      <div class="field">
-        <label data-en="Is it OK to announce our partnership on social media?" data-ar="هل من الممكن الإعلان عن شراكتنا على وسائل التواصل الاجتماعي؟">Is it OK to announce our partnership on social media?</label>
+        <label data-en="We'd love to announce our partnership on social media. Is this okay with you?" data-ar="يسعدنا الإعلان عن شراكتنا على وسائل التواصل الاجتماعي. هل هذا مناسب لك؟">We'd love to announce our partnership on social media. Is this okay with you?</label>
         <div class="chips" data-chipgroup="socialOk">
           <span class="chip" data-val="Yes" data-en="Yes" data-ar="نعم">Yes</span>
           <span class="chip" data-val="No" data-en="No" data-ar="لا">No</span>
@@ -240,19 +199,48 @@
     });
   });
 
+  // Mark every field label as required (red asterisk)
+  document.querySelectorAll('.field label').forEach(function(lbl){
+    if (lbl.querySelector('.req')) return;
+    var star = document.createElement('span');
+    star.className = 'req'; star.textContent = '*';
+    lbl.appendChild(star);
+  });
+
   function submitForm(e){
     e.preventDefault();
     var f = document.getElementById('prefForm');
+    var _ar = (currentLang === 'ar');
+
+    // ---- Validate: all fields required ----
+    var missing = [];
+    function need(val, labelEn, labelAr){ if(!val || !val.toString().trim()) missing.push(_ar?labelAr:labelEn); }
+    need(f.ownerName.value,  'Project owner name', 'اسم مدير المشروع');
+    need(f.ownerRole.value,  'Role / title', 'المسمى الوظيفي');
+    need(f.ownerEmail.value, 'Email', 'البريد الإلكتروني');
+    need(f.ownerPhone.value, 'Phone', 'رقم الهاتف');
+    need(selections.commTool,     'Preferred communication tool', 'وسيلة التواصل المفضّلة');
+    need(selections.commLanguage, 'Preferred communication language', 'لغة التواصل المفضّلة');
+    need(f.goals.value,     'Main goals', 'الأهداف الرئيسية');
+    need(f.challenge.value, 'Biggest challenge', 'أكبر تحدٍّ');
+    need(selections.socialOk, 'Social media announcement', 'الإعلان على وسائل التواصل');
+
+    // basic email sanity
+    if (f.ownerEmail.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.ownerEmail.value.trim())) {
+      missing.push(_ar ? 'بريد إلكتروني صحيح' : 'a valid email');
+    }
+
+    if (missing.length) {
+      alert((_ar ? 'يرجى تعبئة الحقول التالية:\n\n• ' : 'Please complete the following:\n\n• ') + missing.join('\n• '));
+      return false;
+    }
+
     var payload = {
       client: CLIENT, product: PRODUCT,
       ownerName: f.ownerName.value, ownerRole: f.ownerRole.value,
       ownerEmail: f.ownerEmail.value, ownerPhone: f.ownerPhone.value,
       commTool: selections.commTool||'', commLanguage: selections.commLanguage||'',
-      cadence: selections.cadence||'', detailLevel: selections.detailLevel||'',
-      updateFormat: f.updateFormat.value,
-      goals: f.goals.value, success: f.success.value, challenge: f.challenge.value,
-      usedSimilar: f.usedSimilar.value,
-      oneThing: f.oneThing.value, frustration: f.frustration.value,
+      goals: f.goals.value, challenge: f.challenge.value,
       socialOk: selections.socialOk||''
     };
     var btn = f.querySelector('.submit');
@@ -262,8 +250,19 @@
       .then(function(r){ return r.json(); })
       .then(function(d){
         if(!d.ok) throw new Error(d.error||'failed');
+        // Show the thank-you in the language the client CHOSE in the form.
+        var chosen = selections.commLanguage; // 'Arabic' | 'English' | undefined
+        var thankLang = (chosen === 'Arabic') ? 'ar' : (chosen === 'English') ? 'en' : currentLang;
+        setLang(thankLang);
+        var th = document.getElementById('thanks');
+        var h2 = th.querySelector('h2');
+        var pMsg = th.querySelector('p');
+        if (h2) h2.textContent = (thankLang==='ar') ? 'شكراً لك!' : 'Thank you!';
+        if (pMsg) pMsg.textContent = (thankLang==='ar')
+          ? 'تم استلام تفضيلاتك. سنستخدمها لتخصيص طريقة عملنا معاً.'
+          : 'Your preferences have been received. We\'ll use them to tailor how we work together.';
         f.style.display='none';
-        document.getElementById('thanks').style.display='block';
+        th.style.display='block';
         window.scrollTo({top:0,behavior:'smooth'});
       })
       .catch(function(err){
