@@ -5,26 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Client Preferences | KABi</title>
 <style>
+  @font-face{
+    font-family:'FS Albert Arabic';
+    src:url('/fonts/FSAlbertArabic-Regular.woff2') format('woff2');
+    font-weight:400; font-style:normal; font-display:swap;
+  }
+  @font-face{
+    font-family:'FS Albert Arabic';
+    src:url('/fonts/FSAlbertArabic-Bold.woff2') format('woff2');
+    font-weight:700; font-style:normal; font-display:swap;
+  }
+  @font-face{
+    font-family:'FS Albert Arabic';
+    src:url('/fonts/FSAlbertArabic-ExtraBold.woff2') format('woff2');
+    font-weight:800; font-style:normal; font-display:swap;
+  }
   :root{
     --blue:#216AB1; --turq:#1EAFD9; --topaz:#0EB3AE; --meteor:#3D3185; --purple:#9B81BC;
     --ink:#1a2733; --ink-mid:#4a5866; --ink-light:#8a97a6; --rule:#e6e9ee;
     --paper:#f7f9fb; --card:#ffffff;
   }
   *{box-sizing:border-box;}
-  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;}
-  .wrap{max-width:640px;margin:0 auto;padding:0 16px 60px;}
+  body{margin:0;font-family:'FS Albert Arabic',Arial,Helvetica,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;}
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px 60px;}
   .banner{width:100%;display:block;border-radius:0 0 0 0;}
-  .banner-wrap{max-width:640px;margin:0 auto;}
+  .banner-wrap{max-width:860px;margin:0 auto;}
   .head{text-align:center;padding:34px 20px 10px;}
   .head h1{font-size:26px;color:var(--blue);margin:0 0 8px;}
   .head p{font-size:15px;color:var(--ink-mid);margin:0 auto;max-width:520px;}
   .langbar{display:flex;justify-content:center;gap:8px;margin:14px 0 0;}
   .langbar button{border:1px solid var(--rule);background:#fff;color:var(--ink-mid);border-radius:20px;padding:6px 16px;font-size:13px;cursor:pointer;}
   .langbar button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
-  .section{position:relative;background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:24px 24px 10px 26px;margin:20px 0;box-shadow:0 4px 18px rgba(20,40,60,.05);overflow:hidden;}
+  .section{position:relative;background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:24px 24px 10px 26px;margin:20px 0;box-shadow:0 4px 18px rgba(20,40,60,.05);}
   /* colored left accent bar per section */
-  .section::before{content:"";position:absolute;top:0;left:0;bottom:0;width:5px;background:var(--sc,#216AB1);}
-  [dir=rtl] .section::before{left:auto;right:0;}
+  .section::before{content:"";position:absolute;top:0;left:0;bottom:0;width:5px;background:var(--sc,#216AB1);border-radius:16px 0 0 16px;}
+  [dir=rtl] .section::before{left:auto;right:0;border-radius:0 16px 16px 0;}
   [dir=rtl] .section{padding:24px 26px 10px 24px;}
   .section-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
   .section-badge{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--sc-light,#e8f1f9);flex-shrink:0;}
@@ -43,6 +58,21 @@
   .chip{border:1.5px solid var(--rule);background:#fff;border-radius:22px;padding:8px 16px;font-size:13px;cursor:pointer;color:var(--ink-mid);user-select:none;transition:all .15s;}
   .chip:hover{border-color:var(--sc,#1EAFD9);}
   .chip.sel{background:var(--sc,#0EB3AE);border-color:var(--sc,#0EB3AE);color:#fff;box-shadow:0 2px 8px var(--sc-glow,rgba(14,179,174,.3));}
+
+  /* multi-select dropdown */
+  .msdd{position:relative;}
+  .msdd-toggle{width:100%;box-sizing:border-box;border:1.5px solid var(--rule);border-radius:9px;padding:11px 13px;font-size:14px;background:#fff;color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:start;}
+  .msdd-toggle:hover{border-color:var(--sc,#1EAFD9);}
+  .msdd.open .msdd-toggle{border-color:var(--sc,#1EAFD9);box-shadow:0 0 0 3px var(--sc-glow,rgba(30,175,217,.12));}
+  .msdd-toggle .msdd-ph{color:var(--ink-light);}
+  .msdd-toggle .caret{transition:transform .15s;color:var(--ink-light);flex-shrink:0;}
+  .msdd.open .caret{transform:rotate(180deg);}
+  .msdd-panel{display:none;position:absolute;z-index:20;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--rule);border-radius:11px;box-shadow:0 10px 30px rgba(20,40,60,.14);padding:6px;max-height:280px;overflow-y:auto;}
+  .msdd.open .msdd-panel{display:block;}
+  .msdd-opt{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--ink);}
+  .msdd-opt:hover{background:var(--sc-light,#eef6fb);}
+  .msdd-opt .box{width:18px;height:18px;border:1.5px solid var(--rule);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;}
+  .msdd-opt.on .box{background:var(--sc,#0EB3AE);border-color:var(--sc,#0EB3AE);}
   .row2{display:flex;gap:12px;}
   .row2 .field{flex:1;}
   .submit{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:6px;}
@@ -61,8 +91,8 @@
 
 <div class="wrap">
   <div class="head">
-    <h1 data-en="Let's tailor your experience" data-ar="لنُصمّم تجربتك">Let's tailor your experience</h1>
-    <p data-en="Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences." data-ar="مرحباً بك في KABi. لكي تسير شراكتنا بالطريقة التي تناسبك، نودّ أن نتعرّف على تفضيلاتك.">Welcome to KABi. To make our partnership work the way you do, we'd love to understand your preferences.</p>
+    <h1 data-en="Your Partnership Profile" data-ar="ملف شراكتك">Your Partnership Profile</h1>
+    <p data-en="To help us deliver the best possible experience, we'd like to learn more about your team, communication preferences, project goals, and key priorities. This information will help us personalize your experience with KABi throughout your journey." data-ar="لمساعدتنا في تقديم أفضل تجربة ممكنة، نودّ التعرّف أكثر على فريقك وتفضيلات التواصل وأهداف المشروع والأولويات الرئيسية. ستساعدنا هذه المعلومات في تخصيص تجربتك مع KABi طوال رحلتك.">To help us deliver the best possible experience, we'd like to learn more about your team, communication preferences, project goals, and key priorities. This information will help us personalize your experience with KABi throughout your journey.</p>
     <div class="langbar">
       <button id="lang-en" class="active" onclick="setLang('en')">English</button>
       <button id="lang-ar" onclick="setLang('ar')">العربية</button>
@@ -143,31 +173,39 @@
 
       <div class="field">
         <label data-en="What are your main goals for this project?" data-ar="ما أهدافك الرئيسية من هذا المشروع؟">What are your main goals for this project? <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
-        <div class="chips" data-multigroup="goals">
-          <span class="chip" data-val="Speed up and streamline hiring" data-en="Speed up and streamline hiring" data-ar="تسريع وتبسيط التوظيف">Speed up and streamline hiring</span>
-          <span class="chip" data-val="Improve quality and accuracy of candidate selection" data-en="Improve quality and accuracy of candidate selection" data-ar="تحسين جودة ودقة اختيار المرشحين">Improve quality and accuracy of candidate selection</span>
-          <span class="chip" data-val="Make assessments fairer and bias-free" data-en="Make assessments fairer and bias-free" data-ar="جعل التقييمات أكثر عدلاً وخالية من التحيّز">Make assessments fairer and bias-free</span>
-          <span class="chip" data-val="Better workforce & manpower planning" data-en="Better workforce & manpower planning" data-ar="تخطيط أفضل للقوى العاملة">Better workforce & manpower planning</span>
-          <span class="chip" data-val="Stronger data, analytics & reporting" data-en="Stronger data, analytics & reporting" data-ar="بيانات وتحليلات وتقارير أقوى">Stronger data, analytics & reporting</span>
-          <span class="chip" data-val="Reduce hiring costs" data-en="Reduce hiring costs" data-ar="خفض تكاليف التوظيف">Reduce hiring costs</span>
-          <span class="chip" data-val="Improve the candidate & onboarding experience" data-en="Improve the candidate & onboarding experience" data-ar="تحسين تجربة المرشح والانضمام">Improve the candidate & onboarding experience</span>
-          <span class="chip" data-val="Support growth & scaling across teams" data-en="Support growth & scaling across teams" data-ar="دعم النمو والتوسع عبر الفرق">Support growth & scaling across teams</span>
-          <span class="chip chip-other" data-val="__other__" data-en="Other" data-ar="أخرى">Other</span>
+        <div class="msdd" data-multigroup="goals">
+          <button type="button" class="msdd-toggle" onclick="toggleMsdd(this)">
+            <span class="msdd-label"><span class="msdd-ph" data-en="Select…" data-ar="اختر…">Select…</span></span>
+            <span class="caret">▾</span>
+          </button>
+          <div class="msdd-panel">
+            <div class="msdd-opt" data-val="Speed up and streamline hiring"><span class="box">✓</span><span data-en="Speed up and streamline hiring" data-ar="تسريع وتبسيط التوظيف">Speed up and streamline hiring</span></div>
+            <div class="msdd-opt" data-val="Improve quality and accuracy of candidate selection"><span class="box">✓</span><span data-en="Improve quality and accuracy of candidate selection" data-ar="تحسين جودة ودقة اختيار المرشحين">Improve quality and accuracy of candidate selection</span></div>
+            <div class="msdd-opt" data-val="Make assessments fairer and bias-free"><span class="box">✓</span><span data-en="Make assessments fairer and bias-free" data-ar="جعل التقييمات أكثر عدلاً وخالية من التحيّز">Make assessments fairer and bias-free</span></div>
+            <div class="msdd-opt" data-val="Stronger data, analytics & reporting"><span class="box">✓</span><span data-en="Stronger data, analytics & reporting" data-ar="بيانات وتحليلات وتقارير أقوى">Stronger data, analytics & reporting</span></div>
+            <div class="msdd-opt" data-val="Improve the candidate & onboarding experience"><span class="box">✓</span><span data-en="Improve the candidate & onboarding experience" data-ar="تحسين تجربة المرشح والانضمام">Improve the candidate & onboarding experience</span></div>
+            <div class="msdd-opt" data-val="__other__"><span class="box">✓</span><span data-en="Other" data-ar="أخرى">Other</span></div>
+          </div>
         </div>
         <textarea name="goalsOther" class="other-box" data-for="goals" style="display:none;margin-top:10px;" data-ph-en="Tell us more…" data-ph-ar="أخبرنا المزيد…"></textarea>
       </div>
       <div class="field">
         <label data-en="What is your biggest challenge today?" data-ar="ما أكبر تحدٍّ تواجهه اليوم؟">What is your biggest challenge today? <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
-        <div class="chips" data-multigroup="challenge">
-          <span class="chip" data-val="Too many manual, repetitive steps" data-en="Too many manual, repetitive steps" data-ar="خطوات يدوية ومتكررة كثيرة">Too many manual, repetitive steps</span>
-          <span class="chip" data-val="Disconnected systems / no single view" data-en="Disconnected systems / no single view" data-ar="أنظمة غير مترابطة / لا توجد رؤية موحّدة">Disconnected systems / no single view</span>
-          <span class="chip" data-val="Hard to align multiple stakeholders" data-en="Hard to align multiple stakeholders" data-ar="صعوبة مواءمة أصحاب المصلحة المتعددين">Hard to align multiple stakeholders</span>
-          <span class="chip" data-val="Limited budget or resources" data-en="Limited budget or resources" data-ar="ميزانية أو موارد محدودة">Limited budget or resources</span>
-          <span class="chip" data-val="Team resistance to new tools" data-en="Team resistance to new tools" data-ar="مقاومة الفريق للأدوات الجديدة">Team resistance to new tools</span>
-          <span class="chip" data-val="Difficulty proving ROI / measuring impact" data-en="Difficulty proving ROI / measuring impact" data-ar="صعوبة إثبات العائد / قياس الأثر">Difficulty proving ROI / measuring impact</span>
-          <span class="chip" data-val="Compliance & governance pressure" data-en="Compliance & governance pressure" data-ar="ضغوط الامتثال والحوكمة">Compliance & governance pressure</span>
-          <span class="chip" data-val="Keeping up with hiring volume" data-en="Keeping up with hiring volume" data-ar="مواكبة حجم التوظيف">Keeping up with hiring volume</span>
-          <span class="chip chip-other" data-val="__other__" data-en="Other" data-ar="أخرى">Other</span>
+        <div class="msdd" data-multigroup="challenge">
+          <button type="button" class="msdd-toggle" onclick="toggleMsdd(this)">
+            <span class="msdd-label"><span class="msdd-ph" data-en="Select…" data-ar="اختر…">Select…</span></span>
+            <span class="caret">▾</span>
+          </button>
+          <div class="msdd-panel">
+            <div class="msdd-opt" data-val="Too many manual, repetitive steps"><span class="box">✓</span><span data-en="Too many manual, repetitive steps" data-ar="خطوات يدوية ومتكررة كثيرة">Too many manual, repetitive steps</span></div>
+            <div class="msdd-opt" data-val="Disconnected systems / no single view"><span class="box">✓</span><span data-en="Disconnected systems / no single view" data-ar="أنظمة غير مترابطة / لا توجد رؤية موحّدة">Disconnected systems / no single view</span></div>
+            <div class="msdd-opt" data-val="Hard to align multiple stakeholders"><span class="box">✓</span><span data-en="Hard to align multiple stakeholders" data-ar="صعوبة مواءمة أصحاب المصلحة المتعددين">Hard to align multiple stakeholders</span></div>
+            <div class="msdd-opt" data-val="High cost per hire"><span class="box">✓</span><span data-en="High cost per hire" data-ar="ارتفاع تكلفة التوظيف">High cost per hire</span></div>
+            <div class="msdd-opt" data-val="Difficulty finding qualified candidates"><span class="box">✓</span><span data-en="Difficulty finding qualified candidates" data-ar="صعوبة إيجاد مرشحين مؤهّلين">Difficulty finding qualified candidates</span></div>
+            <div class="msdd-opt" data-val="Team resistance to new tools"><span class="box">✓</span><span data-en="Team resistance to new tools" data-ar="مقاومة الفريق للأدوات الجديدة">Team resistance to new tools</span></div>
+            <div class="msdd-opt" data-val="Keeping up with hiring volume"><span class="box">✓</span><span data-en="Keeping up with hiring volume" data-ar="مواكبة حجم التوظيف">Keeping up with hiring volume</span></div>
+            <div class="msdd-opt" data-val="__other__"><span class="box">✓</span><span data-en="Other" data-ar="أخرى">Other</span></div>
+          </div>
         </div>
         <textarea name="challengeOther" class="other-box" data-for="challenge" style="display:none;margin-top:10px;" data-ph-en="Tell us more…" data-ph-ar="أخبرنا المزيد…"></textarea>
       </div>
@@ -220,10 +258,14 @@
     document.documentElement.lang = l;
     document.querySelectorAll('[data-en]').forEach(function(el){
       var t = el.getAttribute('data-'+l);
-      if(t!==null){
-        // keep nested hint spans intact for labels
-        if(el.querySelector('.hint')){ /* skip; handled separately */ }
-        else el.textContent = t;
+      if(t===null) return;
+      if(el.querySelector('.hint')){
+        // label has a nested hint span — translate only the leading text node, keep the hint
+        var firstNode = el.firstChild;
+        if(firstNode && firstNode.nodeType === 3){ firstNode.nodeValue = t + ' '; }
+        else { el.insertBefore(document.createTextNode(t + ' '), el.firstChild); }
+      } else {
+        el.textContent = t;
       }
     });
     // hint spans
@@ -235,6 +277,28 @@
       var t = el.getAttribute('data-ph-'+l); if(t!==null) el.placeholder=t;
     });
   }
+
+  // ---- multi-select dropdown helpers ----
+  function toggleMsdd(btn){
+    var dd = btn.closest('.msdd');
+    var wasOpen = dd.classList.contains('open');
+    document.querySelectorAll('.msdd.open').forEach(function(x){ x.classList.remove('open'); });
+    if (!wasOpen) dd.classList.add('open');
+  }
+  window.toggleMsdd = toggleMsdd;
+
+  function updateMsddLabel(dd, key){
+    var _ar = (currentLang === 'ar');
+    var arr = (window._multiSel[key]||[]);
+    var count = arr.length;
+    var lbl = dd.querySelector('.msdd-label');
+    if (!count) {
+      lbl.innerHTML = '<span class="msdd-ph">' + (_ar?'اختر…':'Select…') + '</span>';
+    } else {
+      lbl.textContent = count + ' ' + (_ar?'مُختار':'selected');
+    }
+  }
+  window.updateMsddLabel = updateMsddLabel;
 
   // chip single-select
   document.querySelectorAll('.chips[data-chipgroup]').forEach(function(group){
@@ -248,7 +312,7 @@
     });
   });
 
-  // chip MULTI-select (goals, challenge) + "Other" reveals a text box
+  // chip MULTI-select (commTool) + "Other" reveals a text box
   var multi = {}; // key -> array of selected values
   document.querySelectorAll('.chips[data-multigroup]').forEach(function(group){
     var key = group.getAttribute('data-multigroup');
@@ -259,7 +323,6 @@
         var on = chip.classList.toggle('sel');
         if (on) { if (multi[key].indexOf(val)===-1) multi[key].push(val); }
         else { multi[key] = multi[key].filter(function(v){ return v!==val; }); }
-        // toggle the Other text box for this group
         if (val === '__other__') {
           var box = document.querySelector('.other-box[data-for="'+key+'"]');
           if (box) box.style.display = on ? 'block' : 'none';
@@ -267,7 +330,33 @@
       });
     });
   });
+
+  // DROPDOWN multi-select (goals, challenge)
+  document.querySelectorAll('.msdd[data-multigroup]').forEach(function(dd){
+    var key = dd.getAttribute('data-multigroup');
+    multi[key] = multi[key] || [];
+    dd.querySelectorAll('.msdd-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        var val = opt.getAttribute('data-val');
+        var on = opt.classList.toggle('on');
+        if (on) { if (multi[key].indexOf(val)===-1) multi[key].push(val); }
+        else { multi[key] = multi[key].filter(function(v){ return v!==val; }); }
+        if (val === '__other__') {
+          var box = document.querySelector('.other-box[data-for="'+key+'"]');
+          if (box) box.style.display = on ? 'block' : 'none';
+        }
+        updateMsddLabel(dd, key);
+      });
+    });
+  });
   window._multiSel = multi;
+
+  // close any open dropdown when clicking outside
+  document.addEventListener('click', function(e){
+    document.querySelectorAll('.msdd.open').forEach(function(dd){
+      if (!dd.contains(e.target)) dd.classList.remove('open');
+    });
+  });
 
   // Mark every field label as required (red asterisk)
   document.querySelectorAll('.field label').forEach(function(lbl){
