@@ -1,246 +1,477 @@
-// api/preferences.js
-// ============================================================
-// Client Preferences form (shared at contract signing).
-// Stored in Upstash under prefs:{client}. Also feeds the client page.
-//
-// GET  /api/preferences?client=NAME  -> { ok, prefs:{...} | null }
-// POST /api/preferences { client, ...answers }  -> saves
-// ============================================================
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Preferences | KABi</title>
+<style>
+  @font-face{
+    font-family:'FS Albert Arabic';
+    src:url('/FSAlbertArabic-Regular.woff2') format('woff2');
+    font-weight:400; font-style:normal; font-display:swap;
+  }
+  @font-face{
+    font-family:'FS Albert Arabic';
+    src:url('/FSAlbertArabic-Bold.woff2') format('woff2');
+    font-weight:700; font-style:normal; font-display:swap;
+  }
+  @font-face{
+    font-family:'FS Albert Arabic';
+    src:url('/FSAlbertArabic-ExtraBold.woff2') format('woff2');
+    font-weight:800; font-style:normal; font-display:swap;
+  }
+  :root{
+    --blue:#216AB1; --turq:#1EAFD9; --topaz:#0EB3AE; --meteor:#3D3185; --purple:#9B81BC;
+    --ink:#1a2733; --ink-mid:#4a5866; --ink-light:#8a97a6; --rule:#e6e9ee;
+    --paper:#f7f9fb; --card:#ffffff;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'FS Albert Arabic',Arial,Helvetica,sans-serif;background:var(--paper);color:var(--ink);line-height:1.6;}
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px 60px;}
+  .banner{width:100%;display:block;border-radius:0 0 0 0;}
+  .banner-wrap{max-width:860px;margin:0 auto;}
+  .head{text-align:center;padding:34px 20px 10px;}
+  .head h1{font-size:26px;color:var(--blue);margin:0 0 8px;}
+  .head p{font-size:15px;color:var(--ink-mid);margin:0 auto;max-width:520px;}
+  .langbar{display:flex;justify-content:center;gap:8px;margin:14px 0 0;}
+  .langbar button{border:1px solid var(--rule);background:#fff;color:var(--ink-mid);border-radius:20px;padding:6px 16px;font-size:13px;cursor:pointer;}
+  .langbar button.active{background:var(--blue);color:#fff;border-color:var(--blue);}
+  .section{position:relative;background:var(--card);border:1px solid var(--rule);border-radius:16px;padding:24px 24px 10px 26px;margin:20px 0;box-shadow:0 4px 18px rgba(20,40,60,.05);}
+  /* colored left accent bar per section */
+  .section::before{content:"";position:absolute;top:0;left:0;bottom:0;width:5px;background:var(--sc,#216AB1);border-radius:16px 0 0 16px;}
+  [dir=rtl] .section::before{left:auto;right:0;border-radius:0 16px 16px 0;}
+  [dir=rtl] .section{padding:24px 26px 10px 24px;}
+  .section-head{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+  .section-badge{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;background:var(--sc-light,#e8f1f9);flex-shrink:0;}
+  .section-title{font-size:16px;font-weight:bold;color:var(--sc,#216AB1);margin:0;line-height:1.2;}
+  .section-sub{font-size:12px;color:var(--ink-light);margin:2px 0 0;}
+  .field{margin-bottom:18px;}
+  .field label{display:block;font-size:14px;font-weight:bold;color:var(--ink);margin-bottom:7px;}
+  .field label .req{color:#d64545;margin:0 3px;}
+  .field .hint{font-weight:normal;color:var(--ink-light);font-size:12px;}
+  input[type=text],input[type=email],input[type=tel],textarea,select{
+    width:100%;border:1.5px solid var(--rule);border-radius:9px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;color:var(--ink);transition:border-color .15s;
+  }
+  textarea{resize:vertical;min-height:74px;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--sc,#1EAFD9);box-shadow:0 0 0 3px var(--sc-glow,rgba(30,175,217,.12));}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{border:1.5px solid var(--rule);background:#fff;border-radius:22px;padding:8px 16px;font-size:13px;cursor:pointer;color:var(--ink-mid);user-select:none;transition:all .15s;}
+  .chip:hover{border-color:var(--sc,#1EAFD9);}
+  .chip.sel{background:var(--sc,#0EB3AE);border-color:var(--sc,#0EB3AE);color:#fff;box-shadow:0 2px 8px var(--sc-glow,rgba(14,179,174,.3));}
 
-module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  /* multi-select dropdown */
+  .msdd{position:relative;}
+  .msdd-toggle{width:100%;box-sizing:border-box;border:1.5px solid var(--rule);border-radius:9px;padding:11px 13px;font-size:14px;background:#fff;color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:start;}
+  .msdd-toggle:hover{border-color:var(--sc,#1EAFD9);}
+  .msdd.open .msdd-toggle{border-color:var(--sc,#1EAFD9);box-shadow:0 0 0 3px var(--sc-glow,rgba(30,175,217,.12));}
+  .msdd-toggle .msdd-ph{color:var(--ink-light);}
+  .msdd-toggle .caret{transition:transform .15s;color:var(--ink-light);flex-shrink:0;}
+  .msdd.open .caret{transform:rotate(180deg);}
+  .msdd-panel{display:none;position:absolute;z-index:20;top:calc(100% + 6px);left:0;right:0;background:#fff;border:1.5px solid var(--rule);border-radius:11px;box-shadow:0 10px 30px rgba(20,40,60,.14);padding:6px;max-height:280px;overflow-y:auto;}
+  .msdd.open .msdd-panel{display:block;}
+  .msdd-opt{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;cursor:pointer;font-size:14px;color:var(--ink);}
+  .msdd-opt:hover{background:var(--sc-light,#eef6fb);}
+  .msdd-opt .box{width:18px;height:18px;border:1.5px solid var(--rule);border-radius:5px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;color:#fff;}
+  .msdd-opt.on .box{background:var(--sc,#0EB3AE);border-color:var(--sc,#0EB3AE);}
+  .row2{display:flex;gap:12px;}
+  .row2 .field{flex:1;}
+  .submit{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:6px;font-family:inherit;}
+  .submit:disabled{opacity:.6;cursor:default;}
+  .foot{text-align:center;color:var(--ink-light);font-size:12px;margin-top:22px;}
+  .thanks{display:none;text-align:center;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:44px 24px;margin:24px 0;}
+  .thanks .tick{width:64px;height:64px;border-radius:50%;background:var(--topaz);color:#fff;font-size:34px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;}
+  .thanks h2{color:var(--blue);margin:0 0 8px;}
+  @media(max-width:520px){ .row2{flex-direction:column;gap:0;} }
+</style>
+</head>
+<body>
+<div class="banner-wrap">
+  <img src="https://feedback-sessions.vercel.app/KABi_NPS_Header.png" alt="KABi" class="banner">
+</div>
 
-  var url = process.env.KV_REST_API_URL;
-  var token = process.env.KV_REST_API_TOKEN;
-  if (!url || !token) return res.status(500).json({ ok: false, error: 'KV env vars not set' });
-  var hdr = { headers: { Authorization: 'Bearer ' + token } };
+<div class="wrap">
+  <div class="head">
+    <h1 data-en="Your Profile" data-ar="ملف العميل">Your Profile</h1>
+    <p data-en="We'd like to learn more about your team, communication preferences, and project goals. This information will help us personalize your experience with KABi throughout your journey." data-ar="نود التعرّف على فريقكم، وتفضيلات التواصل، وأهداف المشروع. ستساعدنا هذه المعلومات على تقديم تجربة مخصصة تلبي احتياجاتكم طوال رحلتكم مع كابي.">We'd like to learn more about your team, communication preferences, and project goals. This information will help us personalize your experience with KABi throughout your journey.</p>
+    <div class="langbar">
+      <button id="lang-en" class="active" onclick="setLang('en')">English</button>
+      <button id="lang-ar" onclick="setLang('ar')">العربية</button>
+    </div>
+  </div>
 
-  try {
-    if (req.method === 'GET') {
-      var client = (req.query && req.query.client) || '';
-      if (!client) return res.status(400).json({ ok: false, error: 'missing client' });
-      var r = await fetch(url + '/get/prefs:' + encodeURIComponent(client), hdr);
-      var d = await r.json();
-      if (!d || !d.result) return res.status(200).json({ ok: true, prefs: null });
-      var prefs; try { prefs = JSON.parse(d.result); } catch (e) { prefs = null; }
-      return res.status(200).json({ ok: true, prefs: prefs });
-    }
+  <form id="prefForm" onsubmit="return submitForm(event)">
 
-    // Delete a client's preferences record
-    if (req.method === 'DELETE' || (req.query && req.query.action === 'delete')) {
-      var delClient = (req.query && req.query.client) || '';
-      if (!delClient) {
-        var b = req.body; if (typeof b === 'string'){ try{b=JSON.parse(b);}catch(e){b={};} }
-        delClient = (b && b.client) || '';
-      }
-      if (!delClient) return res.status(400).json({ ok: false, error: 'missing client' });
-      await fetch(url + '/del/prefs:' + encodeURIComponent(delClient), { method:'POST', headers: hdr.headers });
-      return res.status(200).json({ ok: true, deleted: delClient });
-    }
+    <!-- SECTION 1: About you -->
+    <div class="section" style="--sc:#216AB1;--sc-light:#e8f1f9;--sc-glow:rgba(33,106,177,.26);">
+      <div class="section-head">
+        <div class="section-badge">👤</div>
+        <div>
+          <div class="section-title" data-en="About you" data-ar="بيانات التواصل">About you</div>
+          <div class="section-sub" data-en="Who we'll be working with day to day." data-ar="نقطة الاتصال الرئيسية">Who we'll be working with day to day.</div>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label data-en="Project owner name" data-ar="اسم مدير المشروع">Project owner name</label>
+          <input type="text" name="ownerName">
+        </div>
+        <div class="field">
+          <label data-en="Role / title" data-ar="المسمى الوظيفي">Role / title</label>
+          <input type="text" name="ownerRole">
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label data-en="Email" data-ar="البريد الإلكتروني">Email</label>
+          <input type="email" name="ownerEmail">
+        </div>
+        <div class="field">
+          <label data-en="Phone" data-ar="رقم الهاتف">Phone</label>
+          <input type="tel" name="ownerPhone">
+        </div>
+      </div>
+    </div>
 
-    var body = req.body;
-    if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
-    body = body || {};
-    var name = (body.client || '').toString().trim();
-    if (!name) return res.status(400).json({ ok: false, error: 'missing client' });
+    <!-- SECTION 2: How we'll work together -->
+    <div class="section" style="--sc:#1EAFD9;--sc-light:#e4f6fb;--sc-glow:rgba(30,175,217,.26);">
+      <div class="section-head">
+        <div class="section-badge">💬</div>
+        <div>
+          <div class="section-title" data-en="Communication Preferences" data-ar="تفضيلات التواصل">Communication Preferences</div>
+          <div class="section-sub" data-en="How you'd like us to reach you." data-ar="كيف تودّ أن نتواصل معك.">How you'd like us to reach you.</div>
+        </div>
+      </div>
 
-    function clean(v){ return (v == null ? '' : v.toString()).slice(0, 3000); }
+      <div class="field">
+        <label data-en="Preferred communication tool" data-ar="وسيلة التواصل المفضّلة">Preferred communication tool <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
+        <div class="chips" data-multigroup="commTool">
+          <span class="chip" data-val="Email" data-en="Email" data-ar="البريد الإلكتروني">Email</span>
+          <span class="chip" data-val="Phone" data-en="Phone" data-ar="الهاتف">Phone</span>
+          <span class="chip" data-val="WhatsApp" data-en="WhatsApp" data-ar="واتساب">WhatsApp</span>
+          <span class="chip" data-val="Teams" data-en="Teams" data-ar="Teams">Teams</span>
+        </div>
+      </div>
 
-    var record = {
-      client: name,
-      product: clean(body.product),
-      // owner
-      ownerName: clean(body.ownerName),
-      ownerRole: clean(body.ownerRole),
-      ownerEmail: clean(body.ownerEmail),
-      ownerPhone: clean(body.ownerPhone),
-      // working together
-      commTool: clean(body.commTool),
-      commLanguage: clean(body.commLanguage),
-      cadence: clean(body.cadence),
-      detailLevel: clean(body.detailLevel),
-      updateFormat: clean(body.updateFormat),
-      // goals & context
-      goals: clean(body.goals),
-      success: clean(body.success),
-      challenge: clean(body.challenge),
-      usedSimilar: clean(body.usedSimilar),
-      // exceptional
-      oneThing: clean(body.oneThing),
-      frustration: clean(body.frustration),
-      socialOk: clean(body.socialOk),
-      mktgName: clean(body.mktgName),
-      mktgEmail: clean(body.mktgEmail),
-      mktgPhone: clean(body.mktgPhone),
-      submittedAt: new Date().toISOString()
-    };
+      <div class="field">
+        <label data-en="Preferred communication language" data-ar="لغة التواصل المفضّلة">Preferred communication language</label>
+        <div class="chips" data-chipgroup="commLanguage">
+          <span class="chip" data-val="Arabic" data-en="Arabic" data-ar="العربية">Arabic</span>
+          <span class="chip" data-val="English" data-en="English" data-ar="الإنجليزية">English</span>
+        </div>
+      </div>
+    </div>
 
-    var payload = encodeURIComponent(JSON.stringify(record));
-    await fetch(url + '/set/prefs:' + encodeURIComponent(name) + '/' + payload, hdr);
-    // keep a log too
-    await fetch(url + '/lpush/prefs:log/' + payload, hdr);
+    <!-- SECTION 3: Goals & context -->
+    <div class="section" style="--sc:#0EB3AE;--sc-light:#e0f5f4;--sc-glow:rgba(14,179,174,.26);">
+      <div class="section-head">
+        <div class="section-badge">🎯</div>
+        <div>
+          <div class="section-title" data-en="Goals & Challenges" data-ar="الأهداف والتحديات">Goals & Challenges</div>
+          <div class="section-sub" data-en="What you want to achieve, and what's in the way." data-ar="شاركنا أهدافك والتحديات التي تواجهها.">What you want to achieve, and what's in the way.</div>
+        </div>
+      </div>
 
-    // ---- Build per-team routing summaries ----
-    var routing = buildRouting(record);
+      <div class="field">
+        <label data-en="What are your main goals for this project?" data-ar="ما أهدافك الرئيسية من هذا المشروع؟">What are your main goals for this project? <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
+        <div class="msdd" data-multigroup="goals">
+          <button type="button" class="msdd-toggle" onclick="toggleMsdd(this)">
+            <span class="msdd-label"><span class="msdd-ph" data-en="Select…" data-ar="اختر…">Select…</span></span>
+            <span class="caret">▾</span>
+          </button>
+          <div class="msdd-panel">
+            <div class="msdd-opt" data-val="Speed up and streamline hiring"><span class="box">✓</span><span data-en="Speed up and streamline hiring" data-ar="تسريع عملية التوظيف">Speed up and streamline hiring</span></div>
+            <div class="msdd-opt" data-val="Improve quality of candidate selection"><span class="box">✓</span><span data-en="Improve quality of candidate selection" data-ar="تحسين جودة اختيار المرشحين">Improve quality of candidate selection</span></div>
+            <div class="msdd-opt" data-val="Stronger data, analytics & reporting"><span class="box">✓</span><span data-en="Stronger data, analytics & reporting" data-ar="بيانات وتحليلات وتقارير أكثر دقة">Stronger data, analytics & reporting</span></div>
+            <div class="msdd-opt" data-val="Improve the candidate & onboarding experience"><span class="box">✓</span><span data-en="Improve the candidate & onboarding experience" data-ar="تحسين تجربة المستخدم">Improve the candidate & onboarding experience</span></div>
+            <div class="msdd-opt" data-val="__other__"><span class="box">✓</span><span data-en="Other" data-ar="أخرى">Other</span></div>
+          </div>
+        </div>
+        <textarea name="goalsOther" class="other-box" data-for="goals" style="display:none;margin-top:10px;" data-ph-en="Tell us more…" data-ph-ar="أخبرنا المزيد…"></textarea>
+      </div>
+      <div class="field">
+        <label data-en="What is your biggest challenge today?" data-ar="ما أكبر تحدٍّ تواجهه اليوم؟">What is your biggest challenge today? <span class="hint" data-en="(select all that apply)" data-ar="(اختر كل ما ينطبق)">(select all that apply)</span></label>
+        <div class="msdd" data-multigroup="challenge">
+          <button type="button" class="msdd-toggle" onclick="toggleMsdd(this)">
+            <span class="msdd-label"><span class="msdd-ph" data-en="Select…" data-ar="اختر…">Select…</span></span>
+            <span class="caret">▾</span>
+          </button>
+          <div class="msdd-panel">
+            <div class="msdd-opt" data-val="Too many manual, repetitive steps"><span class="box">✓</span><span data-en="Too many manual, repetitive steps" data-ar="ضعف أتمتة العمليات">Too many manual, repetitive steps</span></div>
+            <div class="msdd-opt" data-val="Hard to align multiple stakeholders"><span class="box">✓</span><span data-en="Hard to align multiple stakeholders" data-ar="صعوبة التنسيق بين الأطراف المعنية">Hard to align multiple stakeholders</span></div>
+            <div class="msdd-opt" data-val="Challenges in finding the best-fit talent"><span class="box">✓</span><span data-en="Challenges in finding the best-fit talent" data-ar="صعوبة العثور على أنسب الكفاءات">Challenges in finding the best-fit talent</span></div>
+            <div class="msdd-opt" data-val="Keeping up with hiring volume"><span class="box">✓</span><span data-en="Keeping up with hiring volume" data-ar="مواكبة حجم التوظيف">Keeping up with hiring volume</span></div>
+            <div class="msdd-opt" data-val="__other__"><span class="box">✓</span><span data-en="Other" data-ar="أخرى">Other</span></div>
+          </div>
+        </div>
+        <textarea name="challengeOther" class="other-box" data-for="challenge" style="display:none;margin-top:10px;" data-ph-en="Tell us more…" data-ph-ar="أخبرنا المزيد…"></textarea>
+      </div>
+    </div>
 
-    // ---- Auto-post to Pipedrive (if this client has a Pipedrive ID) ----
-    var pipedriveResult = null;
-    var pipedriveFields = null;
-    try {
-      var pdId = await clientPipedriveId(url, hdr, name);
-      var pdToken = process.env.PIPEDRIVE_API_TOKEN;
-      if (!pdToken) {
-        pipedriveResult = { ok: false, error: 'PIPEDRIVE_API_TOKEN not set', skipped: true };
-      } else if (!pdId) {
-        pipedriveResult = { ok: false, error: 'No Pipedrive Deal ID saved for client "' + name + '" — run Match Pipedrive IDs first, or set it in Manage clients.', skipped: true };
+    <!-- SECTION 4: Making it exceptional -->
+    <div class="section" style="--sc:#3D3185;--sc-light:#ebe8f5;--sc-glow:rgba(61,49,133,.24);">
+      <div class="section-head">
+        <div class="section-badge">📣</div>
+        <div>
+          <div class="section-title" data-en="Partnership Announcement" data-ar="الإعلان عن الشراكة">Partnership Announcement</div>
+          <div class="section-sub" data-en="Sharing the news of our partnership." data-ar="شاركنا تفضيلك بشأن الإعلان عن شراكتنا.">Sharing the news of our partnership.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-en="We'd love to announce our partnership on social media. Is this okay with you?" data-ar="يسعدنا الإعلان عن شراكتنا على وسائل التواصل الاجتماعي. هل هذا مناسب لك؟">We'd love to announce our partnership on social media. Is this okay with you?</label>
+        <div class="chips" data-chipgroup="socialOk">
+          <span class="chip" data-val="Yes" data-en="Yes" data-ar="نعم">Yes</span>
+          <span class="chip" data-val="No" data-en="No" data-ar="لا">No</span>
+          <span class="chip" data-val="Let's discuss" data-en="Let's discuss" data-ar="لنناقش ذلك">Let's discuss</span>
+        </div>
+      </div>
+
+      <div id="mktgPocWrap" style="display:none;">
+        <label class="mktg-lbl" style="display:block;font-size:14px;font-weight:bold;color:var(--ink);margin:6px 0 10px;" data-en="Marketing point of contact" data-ar="مسؤول التسويق للتواصل">Marketing point of contact</label>
+        <div class="row2">
+          <div class="field">
+            <label class="mktg-lbl" data-en="Name" data-ar="الاسم">Name</label>
+            <input type="text" name="mktgName">
+          </div>
+          <div class="field">
+            <label class="mktg-lbl" data-en="Email" data-ar="البريد الإلكتروني">Email</label>
+            <input type="email" name="mktgEmail">
+          </div>
+        </div>
+        <div class="field">
+          <label class="mktg-lbl" data-en="Phone" data-ar="رقم الهاتف">Phone</label>
+          <input type="tel" name="mktgPhone">
+        </div>
+      </div>
+    </div>
+
+    <button type="submit" class="submit" data-en="Submit preferences" data-ar="إرسال التفضيلات">Submit preferences</button>
+    <div class="foot" data-en="KABi • Continuously improving your experience" data-ar="كابي • نُطوّر تجربتك باستمرار">KABi • Continuously improving your experience</div>
+  </form>
+
+  <div class="thanks" id="thanks">
+    <div class="tick">&#10003;</div>
+    <h2 data-en="Thank you!" data-ar="شكراً لك!">Thank you!</h2>
+  </div>
+</div>
+
+<script>
+  // read client + product from the link (?client=SNB&product=HYRDD)
+  var params = new URLSearchParams(location.search);
+  var CLIENT = params.get('client') || '';
+  var PRODUCT = params.get('product') || '';
+  var URL_LANG = (params.get('lang') || '').toLowerCase() === 'ar' ? 'ar' : 'en';
+  var selections = {};
+
+  var currentLang = 'en';
+  function setLang(l){
+    currentLang = l;
+    document.getElementById('lang-en').classList.toggle('active', l==='en');
+    document.getElementById('lang-ar').classList.toggle('active', l==='ar');
+    document.documentElement.dir = (l==='ar') ? 'rtl' : 'ltr';
+    document.documentElement.lang = l;
+    document.querySelectorAll('[data-en]').forEach(function(el){
+      var t = el.getAttribute('data-'+l);
+      if(t===null) return;
+      if(el.querySelector('.hint')){
+        // label has a nested hint span — translate only the leading text node, keep the hint
+        var firstNode = el.firstChild;
+        if(firstNode && firstNode.nodeType === 3){ firstNode.nodeValue = t + ' '; }
+        else { el.insertBefore(document.createTextNode(t + ' '), el.firstChild); }
       } else {
-        var pdDomain = process.env.PIPEDRIVE_DOMAIN || 'api';
-
-        // 1) Post the note
-        var noteHtml = pipedriveNote(record, routing);
-        var pdPayload = { content: noteHtml, deal_id: Number(pdId) || undefined };
-        var pdUrl = 'https://' + pdDomain + '.pipedrive.com/api/v1/notes?api_token=' + encodeURIComponent(pdToken);
-        var pdResp = await fetch(pdUrl, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(pdPayload)
-        });
-        var pdData = await pdResp.json();
-        pipedriveResult = (pdResp.ok && pdData && pdData.success !== false)
-          ? { ok: true, id: pdData.data && pdData.data.id, dealId: pdId }
-          : { ok: false, error: (pdData && (pdData.error || pdData.error_info)) || ('Pipedrive error ' + pdResp.status), dealId: pdId };
-
-        // 2) Update the custom fields on the deal
-        var fieldUpdate = pipedriveCustomFields(record);
-        if (Object.keys(fieldUpdate).length) {
-          var dealUrl = 'https://' + pdDomain + '.pipedrive.com/api/v1/deals/' + encodeURIComponent(pdId) + '?api_token=' + encodeURIComponent(pdToken);
-          var fResp = await fetch(dealUrl, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(fieldUpdate)
-          });
-          var fData = await fResp.json();
-          pipedriveFields = (fResp.ok && fData && fData.success !== false)
-            ? { ok: true }
-            : { ok: false, error: (fData && (fData.error || fData.error_info)) || ('Pipedrive field error ' + fResp.status) };
-        }
+        el.textContent = t;
       }
-    } catch (e) { pipedriveResult = { ok: false, error: e.message }; }
-
-    return res.status(200).json({ ok: true, routing: routing, pipedrive: pipedriveResult, pipedriveFields: pipedriveFields });
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: err.message });
-  }
-};
-
-// Maps preferences answers -> Pipedrive custom field keys/option IDs.
-// Currently only two fields are reflected: Communication Tool + Language.
-function pipedriveCustomFields(p) {
-  var out = {};
-
-  // Preferred Communication Tool (field_type: set / multiple options)
-  // commTool may now be multiple, comma-separated labels e.g. "Email, WhatsApp"
-  var TOOL_KEY = 'ca50cc5ff0eeeb68c65311bff04d97ca540804db';
-  var TOOL_MAP = { 'Email':255, 'Phone':256, 'WhatsApp':257, 'Teams':259 }; // Slack dropped; Phone->Call(256)
-  if (p.commTool) {
-    var ids = p.commTool.split(',').map(function(s){ return s.trim(); })
-      .map(function(lbl){ return TOOL_MAP[lbl]; })
-      .filter(function(id){ return id != null; });
-    if (ids.length) out[TOOL_KEY] = ids.join(','); // "set" accepts comma-separated option ids
+    });
+    // hint spans
+    document.querySelectorAll('.hint[data-en]').forEach(function(el){
+      var t = el.getAttribute('data-'+l); if(t!==null) el.textContent=t;
+    });
+    // placeholders
+    document.querySelectorAll('[data-ph-en]').forEach(function(el){
+      var t = el.getAttribute('data-ph-'+l); if(t!==null) el.placeholder=t;
+    });
   }
 
-  // Preferred Language (field_type: enum / single option)
-  var LANG_KEY = '24cd6d24a412932cfc213dbb6a7d6e9a551ae3b5';
-  var LANG_MAP = { 'Arabic':253, 'English':254 };
-  if (p.commLanguage && LANG_MAP[p.commLanguage] != null) {
-    out[LANG_KEY] = LANG_MAP[p.commLanguage];
+  // ---- multi-select dropdown helpers ----
+  function toggleMsdd(btn){
+    var dd = btn.closest('.msdd');
+    var wasOpen = dd.classList.contains('open');
+    document.querySelectorAll('.msdd.open').forEach(function(x){ x.classList.remove('open'); });
+    if (!wasOpen) dd.classList.add('open');
   }
+  window.toggleMsdd = toggleMsdd;
 
-  return out;
-}
-
-// Look up a client's Pipedrive deal id from the managed clients list.
-async function clientPipedriveId(url, hdr, name) {
-  try {
-    var r = await fetch(url + '/get/clients:list', hdr);
-    var d = await r.json();
-    if (!d || !d.result) return '';
-    var list = JSON.parse(d.result) || [];
-    var target = (name || '').trim().toLowerCase();
-    // 1) exact (trimmed, case-insensitive)
-    var match = list.find(function (c) { return (c.name || '').trim().toLowerCase() === target; });
-    // 2) fallback: ignore surrounding punctuation/extra spaces
-    if (!match) {
-      var nz = function(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g,' ').trim(); };
-      var nt = nz(target);
-      match = list.find(function (c) { return nz(c.name) === nt; });
+  function updateMsddLabel(dd, key){
+    var _ar = (currentLang === 'ar');
+    var arr = (window._multiSel[key]||[]);
+    var count = arr.length;
+    var lbl = dd.querySelector('.msdd-label');
+    if (!count) {
+      lbl.innerHTML = '<span class="msdd-ph">' + (_ar?'اختر…':'Select…') + '</span>';
+    } else {
+      lbl.textContent = count + ' ' + (_ar?'مُختار':'selected');
     }
-    return match && match.pipedriveId ? String(match.pipedriveId).trim() : '';
-  } catch (e) { return ''; }
-}
+  }
+  window.updateMsddLabel = updateMsddLabel;
 
-// Rule-based routing: decide which teams care about which answers.
-function buildRouting(p) {
-  var teams = {};
-  // Marketing: social announcement
-  if (p.socialOk) {
-    var mktgPoc = '';
-    if (p.mktgName || p.mktgEmail || p.mktgPhone) {
-      mktgPoc = ' Marketing contact: ' + [p.mktgName, p.mktgEmail, p.mktgPhone].filter(Boolean).join(' · ') + '.';
+  // chip single-select
+  document.querySelectorAll('.chips[data-chipgroup]').forEach(function(group){
+    var key = group.getAttribute('data-chipgroup');
+    group.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        group.querySelectorAll('.chip').forEach(function(c){ c.classList.remove('sel'); });
+        chip.classList.add('sel');
+        selections[key] = chip.getAttribute('data-val');
+        // reveal Marketing POC only when social answer is Yes
+        if (key === 'socialOk') {
+          var poc = document.getElementById('mktgPocWrap');
+          if (poc) poc.style.display = (chip.getAttribute('data-val') === 'Yes') ? 'block' : 'none';
+        }
+      });
+    });
+  });
+
+  // chip MULTI-select (commTool) + "Other" reveals a text box
+  var multi = {}; // key -> array of selected values
+  document.querySelectorAll('.chips[data-multigroup]').forEach(function(group){
+    var key = group.getAttribute('data-multigroup');
+    multi[key] = [];
+    group.querySelectorAll('.chip').forEach(function(chip){
+      chip.addEventListener('click', function(){
+        var val = chip.getAttribute('data-val');
+        var on = chip.classList.toggle('sel');
+        if (on) { if (multi[key].indexOf(val)===-1) multi[key].push(val); }
+        else { multi[key] = multi[key].filter(function(v){ return v!==val; }); }
+        if (val === '__other__') {
+          var box = document.querySelector('.other-box[data-for="'+key+'"]');
+          if (box) box.style.display = on ? 'block' : 'none';
+        }
+      });
+    });
+  });
+
+  // DROPDOWN multi-select (goals, challenge)
+  document.querySelectorAll('.msdd[data-multigroup]').forEach(function(dd){
+    var key = dd.getAttribute('data-multigroup');
+    multi[key] = multi[key] || [];
+    dd.querySelectorAll('.msdd-opt').forEach(function(opt){
+      opt.addEventListener('click', function(){
+        var val = opt.getAttribute('data-val');
+        var on = opt.classList.toggle('on');
+        if (on) { if (multi[key].indexOf(val)===-1) multi[key].push(val); }
+        else { multi[key] = multi[key].filter(function(v){ return v!==val; }); }
+        if (val === '__other__') {
+          var box = document.querySelector('.other-box[data-for="'+key+'"]');
+          if (box) box.style.display = on ? 'block' : 'none';
+        }
+        updateMsddLabel(dd, key);
+      });
+    });
+  });
+  window._multiSel = multi;
+
+  // close any open dropdown when clicking outside
+  document.addEventListener('click', function(e){
+    document.querySelectorAll('.msdd.open').forEach(function(dd){
+      if (!dd.contains(e.target)) dd.classList.remove('open');
+    });
+  });
+
+  // Mark every field label as required (red asterisk)
+  document.querySelectorAll('.field label').forEach(function(lbl){
+    if (lbl.querySelector('.req')) return;
+    var star = document.createElement('span');
+    star.className = 'req'; star.textContent = '*';
+    lbl.appendChild(star);
+  });
+
+  // Apply the language passed in the link (?lang=ar or ?lang=en)
+  setLang(URL_LANG);
+
+  function submitForm(e){
+    e.preventDefault();
+    var f = document.getElementById('prefForm');
+    var _ar = (currentLang === 'ar');
+
+    // ---- Validate: all fields required ----
+    var multi = window._multiSel || {goals:[],challenge:[]};
+    // build goals / challenge values (join selected + Other text)
+    function buildMulti(key, otherField){
+      var vals = (multi[key]||[]).filter(function(v){return v!=='__other__';});
+      var other = f[otherField] ? f[otherField].value.trim() : '';
+      if ((multi[key]||[]).indexOf('__other__')!==-1 && other) vals.push(other);
+      return vals.join('; ');
     }
-    teams.marketing = {
-      trigger: 'Social announcement: ' + p.socialOk,
-      flag: /^yes/i.test(p.socialOk) ? 'APPROVED to announce' : (/^no/i.test(p.socialOk) ? 'DO NOT announce' : 'Discuss before announcing'),
-      details: 'Client "' + p.client + '" answered "' + p.socialOk + '" to announcing the partnership on social media.' + mktgPoc
-    };
-  }
-  // Account team: goals, success, comms, cadence
-  teams.account = {
-    trigger: 'New client preferences submitted',
-    details: [
-      p.goals ? ('Goals: ' + p.goals) : '',
-      p.success ? ('Success (3–6mo): ' + p.success) : '',
-      p.commTool ? ('Preferred tool: ' + p.commTool) : '',
-      p.commLanguage ? ('Language: ' + p.commLanguage) : '',
-      p.cadence ? ('Cadence: ' + p.cadence) : '',
-      p.detailLevel ? ('Detail level: ' + p.detailLevel) : ''
-    ].filter(Boolean).join('\n')
-  };
-  // Delivery/Ops: challenges, frustrations, the one thing
-  if (p.challenge || p.frustration || p.oneThing) {
-    teams.delivery = {
-      trigger: 'Experience signals to watch',
-      details: [
-        p.challenge ? ('Biggest challenge: ' + p.challenge) : '',
-        p.frustration ? ('Frustrations: ' + p.frustration) : '',
-        p.oneThing ? ('One thing to be exceptional: ' + p.oneThing) : ''
-      ].filter(Boolean).join('\n')
-    };
-  }
-  return teams;
-}
+    var goalsVal = buildMulti('goals','goalsOther');
+    var challengeVal = buildMulti('challenge','challengeOther');
+    var toolVal = (multi['commTool']||[]).filter(function(v){return v!=='__other__';}).join(', ');
 
-// Format the Pipedrive note (HTML supported by Pipedrive notes).
-function pipedriveNote(p, routing) {
-  var lines = [];
-  lines.push('<b>Client Preferences — ' + p.client + (p.product ? (' (' + p.product + ')') : '') + '</b>');
-  lines.push('');
-  if (p.ownerName) lines.push('<b>Project owner:</b> ' + p.ownerName + (p.ownerRole ? (' · ' + p.ownerRole) : ''));
-  if (p.ownerEmail || p.ownerPhone) lines.push('<b>Contact:</b> ' + [p.ownerEmail, p.ownerPhone].filter(Boolean).join(' · '));
-  lines.push('');
-  if (routing.marketing) lines.push('🔵 <b>MARKETING:</b> ' + routing.marketing.flag + ' — ' + routing.marketing.trigger);
-  lines.push('');
-  lines.push('<b>How they want to work:</b> ' + [p.commTool, p.commLanguage, p.cadence, p.detailLevel].filter(Boolean).join(' · '));
-  if (p.updateFormat) lines.push('<b>Updates:</b> ' + p.updateFormat);
-  lines.push('');
-  if (p.goals) lines.push('<b>Goals:</b> ' + p.goals);
-  if (p.success) lines.push('<b>Success (3–6mo):</b> ' + p.success);
-  if (p.challenge) lines.push('<b>Biggest challenge:</b> ' + p.challenge);
-  if (p.usedSimilar) lines.push('<b>Used similar before:</b> ' + p.usedSimilar);
-  if (p.oneThing) lines.push('<b>One exceptional thing:</b> ' + p.oneThing);
-  if (p.frustration) lines.push('<b>Frustrations:</b> ' + p.frustration);
-  lines.push('');
-  lines.push('<i>Submitted ' + new Date(p.submittedAt).toLocaleString() + ' via KABi feedback platform</i>');
-  return lines.join('<br>');
-}
+    var missing = [];
+    function need(val, labelEn, labelAr){ if(!val || !val.toString().trim()) missing.push(_ar?labelAr:labelEn); }
+    need(f.ownerName.value,  'Project owner name', 'اسم مدير المشروع');
+    need(f.ownerRole.value,  'Role / title', 'المسمى الوظيفي');
+    need(f.ownerEmail.value, 'Email', 'البريد الإلكتروني');
+    need(f.ownerPhone.value, 'Phone', 'رقم الهاتف');
+    need(toolVal,                 'Preferred communication tool', 'وسيلة التواصل المفضّلة');
+    need(selections.commLanguage, 'Preferred communication language', 'لغة التواصل المفضّلة');
+    need(goalsVal,     'Main goals', 'الأهداف الرئيسية');
+    need(challengeVal, 'Biggest challenge', 'أكبر تحدٍّ');
+    need(selections.socialOk, 'Social media announcement', 'الإعلان على وسائل التواصل');
+
+    // Marketing POC required only if social answer is Yes
+    if (selections.socialOk === 'Yes') {
+      need(f.mktgName.value,  'Marketing contact name', 'اسم مسؤول التسويق');
+      need(f.mktgEmail.value, 'Marketing contact email', 'بريد مسؤول التسويق');
+      need(f.mktgPhone.value, 'Marketing contact phone', 'هاتف مسؤول التسويق');
+      if (f.mktgEmail.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.mktgEmail.value.trim())) {
+        missing.push(_ar ? 'بريد مسؤول تسويق صحيح' : 'a valid marketing email');
+      }
+    }
+
+    // basic email sanity
+    if (f.ownerEmail.value && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.ownerEmail.value.trim())) {
+      missing.push(_ar ? 'بريد إلكتروني صحيح' : 'a valid email');
+    }
+
+    if (missing.length) {
+      alert((_ar ? 'يرجى تعبئة الحقول التالية:\n\n• ' : 'Please complete the following:\n\n• ') + missing.join('\n• '));
+      return false;
+    }
+
+    var payload = {
+      client: CLIENT, product: PRODUCT,
+      ownerName: f.ownerName.value, ownerRole: f.ownerRole.value,
+      ownerEmail: f.ownerEmail.value, ownerPhone: f.ownerPhone.value,
+      commTool: toolVal, commLanguage: selections.commLanguage||'',
+      goals: goalsVal, challenge: challengeVal,
+      socialOk: selections.socialOk||'',
+      mktgName: f.mktgName.value||'', mktgEmail: f.mktgEmail.value||'', mktgPhone: f.mktgPhone.value||''
+    };
+    var btn = f.querySelector('.submit');
+    btn.disabled = true;
+    btn.textContent = currentLang==='ar' ? 'جارٍ الإرسال…' : 'Submitting…';
+    fetch('/api/preferences', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) })
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if(!d.ok) throw new Error(d.error||'failed');
+        // Show the thank-you in the language the client CHOSE in the form.
+        var chosen = selections.commLanguage; // 'Arabic' | 'English' | undefined
+        var thankLang = (chosen === 'Arabic') ? 'ar' : (chosen === 'English') ? 'en' : currentLang;
+        setLang(thankLang);
+        var th = document.getElementById('thanks');
+        var h2 = th.querySelector('h2');
+        if (h2) h2.textContent = (thankLang==='ar') ? 'شكراً لك!' : 'Thank you!';
+        f.style.display='none';
+        th.style.display='block';
+        window.scrollTo({top:0,behavior:'smooth'});
+      })
+      .catch(function(err){
+        btn.disabled=false;
+        btn.textContent = currentLang==='ar' ? 'إرسال التفضيلات' : 'Submit preferences';
+        alert((currentLang==='ar'?'تعذّر الإرسال: ':'Could not submit: ') + err.message);
+      });
+    return false;
+  }
+</script>
+</body>
+</html>
