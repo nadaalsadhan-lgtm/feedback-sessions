@@ -1147,8 +1147,13 @@ function openTeamEmail(which) {
     headline = _ia?'قرار الإعلان على وسائل التواصل':'Social announcement decision';
     rows += rowHtml(_ia?'قرار العميل':'Client decision', p.socialOk);
     rows += rowHtml(_ia?'الحالة':'Status', flag);
-  } else if (which === 'account') {
-    headline = _ia?'تفضيلات العمل مع العميل':'How this client wants to work';
+    // Marketing point of contact
+    rows += rowHtml(_ia?'مسؤول التسويق':'Marketing contact', p.mktgName);
+    rows += rowHtml(_ia?'بريد مسؤول التسويق':'Marketing email', p.mktgEmail);
+    rows += rowHtml(_ia?'هاتف مسؤول التسويق':'Marketing phone', p.mktgPhone);
+  } else {
+    // AM (account) and CS (delivery) get the SAME content: all form details except marketing.
+    headline = _ia?'تفاصيل ملف العميل':'Client profile details';
     rows += rowHtml(_ia?'مسؤول المشروع':'Project owner', [p.ownerName,p.ownerRole].filter(Boolean).join(' · '));
     rows += rowHtml(_ia?'التواصل':'Contact', [p.ownerEmail,p.ownerPhone].filter(Boolean).join(' · '));
     rows += rowHtml(_ia?'أداة التواصل':'Preferred tool', p.commTool);
@@ -1158,8 +1163,6 @@ function openTeamEmail(which) {
     rows += rowHtml(_ia?'طريقة التحديثات':'Update format', p.updateFormat);
     rows += rowHtml(_ia?'الأهداف':'Main goals', p.goals);
     rows += rowHtml(_ia?'تعريف النجاح':'Definition of success', p.success);
-  } else {
-    headline = _ia?'إشارات التجربة':'Experience signals to act on';
     rows += rowHtml(_ia?'أكبر تحدٍّ':'Biggest challenge', p.challenge);
     rows += rowHtml(_ia?'مصادر الإزعاج':'Frustrations', p.frustration);
     rows += rowHtml(_ia?'الشيء الاستثنائي':'One exceptional thing', p.oneThing);
@@ -2324,11 +2327,11 @@ function renderClientPrefs(name, _ia) {
       var L = _ia ? {
         owner:'مسؤول المشروع', contact:'التواصل', tool:'أداة التواصل', lang:'اللغة', cadence:'وتيرة الاجتماعات',
         detail:'مستوى التفصيل', updates:'طريقة التحديثات', goals:'الأهداف', success:'تعريف النجاح',
-        challenge:'أكبر تحدٍّ', similar:'أنظمة سابقة', onething:'الشيء الاستثنائي', frustration:'مصادر الإزعاج', social:'الإعلان على وسائل التواصل', when:'أُرسل في'
+        challenge:'أكبر تحدٍّ', similar:'أنظمة سابقة', onething:'الشيء الاستثنائي', frustration:'مصادر الإزعاج', social:'الإعلان على وسائل التواصل', when:'أُرسل في', mktg:'مسؤول التسويق'
       } : {
         owner:'Project owner', contact:'Contact', tool:'Communication tool', lang:'Language', cadence:'Meeting cadence',
         detail:'Detail level', updates:'Update format', goals:'Main goals', success:'Definition of success',
-        challenge:'Biggest challenge', similar:'Used similar before', onething:'One exceptional thing', frustration:'Frustrations', social:'Social announcement', when:'Submitted'
+        challenge:'Biggest challenge', similar:'Used similar before', onething:'One exceptional thing', frustration:'Frustrations', social:'Social announcement', when:'Submitted', mktg:'Marketing contact'
       };
       var quick = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">';
       [p.commTool, p.commLanguage, p.cadence, p.detailLevel].forEach(function(v){
@@ -2347,6 +2350,8 @@ function renderClientPrefs(name, _ia) {
       html += row(L.similar, p.usedSimilar);
       html += row(L.onething, p.oneThing);
       html += row(L.frustration, p.frustration);
+      var mktgPoc = [p.mktgName, p.mktgEmail, p.mktgPhone].filter(Boolean).join(' · ');
+      html += row(L.mktg, mktgPoc);
       if (p.submittedAt) {
         var dt = new Date(p.submittedAt).toLocaleDateString(_ia?'ar-SA':'en-GB',{day:'numeric',month:'short',year:'numeric'});
         html += '<div style="font-size:11px;color:var(--ink-light);margin-top:10px;">' + L.when + ': ' + dt + '</div>';
