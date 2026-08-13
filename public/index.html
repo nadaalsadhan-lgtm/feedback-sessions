@@ -2054,9 +2054,19 @@ function renderMatchReview(results) {
 
   var rows = results.map(function(r, i){
     var matched = r.match;
+    var confColors = { high:'#2d7a2d', medium:'#b8860b', low:'#b04a4a' };
+    var confLabels = _ia
+      ? { high:'مطابقة قوية', medium:'مطابقة محتملة', low:'مطابقة ضعيفة' }
+      : { high:'strong', medium:'likely', low:'weak' };
+    var confDot = matched
+      ? '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + (confColors[r.confidence]||'#999') + ';margin-inline-end:6px;"></span>'
+      : '';
+    var confTag = matched
+      ? '<span style="font-size:10px;color:' + (confColors[r.confidence]||'#999') + ';border:1px solid ' + (confColors[r.confidence]||'#999') + '33;border-radius:10px;padding:1px 7px;margin-inline-start:6px;">' + (confLabels[r.confidence]||'') + '</span>'
+      : '';
     var status = matched
-      ? '<span style="color:#2d7a2d;font-size:12px;">✓ ' + (r.match.title||'').replace(/</g,'&lt;') + ' (#' + r.match.id + ')</span>'
-      : '<span style="color:#b04a4a;font-size:12px;">' + (_ia?'لا يوجد تطابق':'No match') + '</span>';
+      ? '<span style="color:var(--ink-mid);font-size:12px;">' + confDot + (r.match.title||'').replace(/</g,'&lt;') + ' (#' + r.match.id + ')' + confTag + '</span>'
+      : '<span style="color:#b04a4a;font-size:12px;">' + (_ia?'لا يوجد تطابق — أدخل المعرّف يدويًا':'No match — enter ID manually') + '</span>';
     var val = matched ? r.match.id : (r.current||'');
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);">'
       + '<div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:500;color:var(--ink);">' + r.name.replace(/</g,'&lt;') + '</div>'
