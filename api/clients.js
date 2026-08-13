@@ -56,33 +56,93 @@ module.exports = async function handler(req, res) {
       var pdDomain = process.env.PIPEDRIVE_DOMAIN || 'api';
       if (!pdToken) return res.status(200).json({ ok: false, error: 'PIPEDRIVE_API_TOKEN not set' });
 
+      // 1) Fetch ALL deals once (paginated), across all statuses.
+      var allDeals = [];
+      var start = 0, more = true, guard = 0;
+      while (more && guard < 40) {
+        guard++;
+        var listUrl = 'https://' + pdDomain + '.pipedrive.com/api/v1/deals'
+          + '?status=all_not_deleted&limit=500&start=' + start
+          + '&api_token=' + encodeURIComponent(pdToken);
+        var lr = await fetch(listUrl);
+        var ld = await lr.json();
+        var batch = (ld && ld.data) ? ld.data : [];
+        for (var b = 0; b < batch.length; b++) {
+          if (batch[b] && batch[b].id) allDeals.push({ id: batch[b].id, title: batch[b].title || '' });
+        }
+        var pg = ld && ld.additional_data && ld.additional_data.pagination;
+        if (pg && pg.more_items_in_collection) { start = pg.next_start; } else { more = false; }
+      }
+
+      // helper: normalize for comparison (lowercase, strip punctuation/extra spaces)
+      function nz(s){
+        return String(s||'').toLowerCase()
+          .replace(/[()\[\]{}._\-|,،]/g,' ')
+          .replace(/\b(company|co|ltd|llc|corp|corporation|holding|group|the|by|kabi|hyrdd|inviews)\b/g,' ')
+          .replace(/\s+/g,' ').trim();
+      }
+      // extract acronym tokens inside parentheses e.g. "... (TDF) (HYRDD)" -> ["tdf","hyrdd"]
+      function parenTokens(s){
+        var out = [], m, re = /\(([^)]+)\)/g;
+        while ((m = re.exec(String(s||'')))) out.push(m[1].toLowerCase().trim());
+        return out;
+      }
+
+      // 2) Match each client against all deals with several strategies.
       var results = [];
       for (var i = 0; i < list.length; i++) {
         var c = list[i];
-        var q = norm(c.name);
-        if (!q) { results.push({ name: c.name, current: c.pipedriveId||'', match: null }); continue; }
-        try {
-          var sUrl = 'https://' + pdDomain + '.pipedrive.com/api/v1/deals/search'
-            + '?term=' + encodeURIComponent(q) + '&fields=title&limit=3'
-            + '&api_token=' + encodeURIComponent(pdToken);
-          var sr = await fetch(sUrl);
-          var sd = await sr.json();
-          var items = (sd && sd.data && sd.data.items) ? sd.data.items : [];
-          if (items.length) {
-            var top = items[0].item;
-            results.push({
-              name: c.name, current: c.pipedriveId||'',
-              match: { id: top.id, title: top.title },
-              alternatives: items.slice(1).map(function(x){ return { id:x.item.id, title:x.item.title }; })
-            });
-          } else {
-            results.push({ name: c.name, current: c.pipedriveId||'', match: null });
+        var rawName = String(c.name||'').trim();
+        var nName = nz(rawName);
+        var lowName = rawName.toLowerCase();
+        if (!rawName) { results.push({ name: c.name, current: c.pipedriveId||'', match: null, confidence: 'none' }); continue; }
+
+        var scored = [];
+        for (var d = 0; d < allDeals.length; d++) {
+          var title = allDeals[d].title;
+          var nTitle = nz(title);
+          var lowTitle = title.toLowerCase();
+          var score = 0;
+
+          // strong: exact normalized equality
+          if (nName && nTitle === nName) score = 100;
+          // strong: acronym appears as its own token in parentheses  e.g. app "TDF" vs "...(TDF)..."
+          else if (parenTokens(title).indexOf(lowName) !== -1) score = 95;
+          // strong: whole app name appears as a standalone word in title
+          else if (nName && new RegExp('(^| )' + nName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '( |$)').test(nTitle)) score = 85;
+          // medium: title contains the app name substring
+          else if (lowName.length >= 3 && lowTitle.indexOf(lowName) !== -1) score = 70;
+          // medium: app name contains the title (title is the short form)
+          else if (nTitle.length >= 3 && nName.indexOf(nTitle) !== -1) score = 65;
+          else {
+            // weak: word-overlap ratio
+            var aw = nName.split(' ').filter(Boolean);
+            var tw = nTitle.split(' ').filter(Boolean);
+            if (aw.length && tw.length) {
+              var hit = 0;
+              for (var w = 0; w < aw.length; w++) { if (aw[w].length>2 && tw.indexOf(aw[w])!==-1) hit++; }
+              var ratio = hit / aw.length;
+              if (ratio >= 0.6) score = 40 + Math.round(ratio*20);
+            }
           }
-        } catch (e) {
-          results.push({ name: c.name, current: c.pipedriveId||'', match: null, error: e.message });
+          if (score > 0) scored.push({ id: allDeals[d].id, title: title, score: score });
+        }
+
+        scored.sort(function(a,b){ return b.score - a.score; });
+
+        if (scored.length) {
+          var conf = scored[0].score >= 85 ? 'high' : (scored[0].score >= 65 ? 'medium' : 'low');
+          results.push({
+            name: c.name, current: c.pipedriveId||'',
+            match: { id: scored[0].id, title: scored[0].title },
+            confidence: conf,
+            alternatives: scored.slice(1,4).map(function(x){ return { id:x.id, title:x.title }; })
+          });
+        } else {
+          results.push({ name: c.name, current: c.pipedriveId||'', match: null, confidence: 'none' });
         }
       }
-      return res.status(200).json({ ok: true, results: results });
+      return res.status(200).json({ ok: true, results: results, dealCount: allDeals.length });
     }
 
     // Bulk-save Pipedrive IDs after the user reviews the matches.
