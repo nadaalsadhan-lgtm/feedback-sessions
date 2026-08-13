@@ -51,6 +51,38 @@ module.exports = async function handler(req, res) {
 
     // Auto-match clients to Pipedrive deals by name. Returns suggestions
     // for the user to review — does NOT save until confirmed via 'update'.
+    // Diagnose Pipedrive connection: checks env vars, token validity, and a test deal fetch.
+    if (action === 'pdDiag') {
+      var diag = {};
+      var t = process.env.PIPEDRIVE_API_TOKEN;
+      var dom = process.env.PIPEDRIVE_DOMAIN || 'api';
+      diag.tokenSet = !!t;
+      diag.domain = dom;
+      if (!t) { diag.ok = false; diag.reason = 'PIPEDRIVE_API_TOKEN not set in Vercel'; return res.status(200).json(diag); }
+      // 1) whoami — validates token
+      try {
+        var meR = await fetch('https://' + dom + '.pipedrive.com/api/v1/users/me?api_token=' + encodeURIComponent(t));
+        var meD = await meR.json();
+        diag.tokenValid = !!(meR.ok && meD && meD.success);
+        diag.tokenStatus = meR.status;
+        if (meD && meD.data) { diag.account = meD.data.company_name || meD.data.name || ''; }
+        if (meD && meD.error) diag.tokenError = meD.error;
+      } catch (e) { diag.tokenValid = false; diag.tokenError = e.message; }
+      // 2) test a specific deal id if provided
+      var testId = body.dealId || (req.query && req.query.dealId);
+      if (testId) {
+        try {
+          var dR = await fetch('https://' + dom + '.pipedrive.com/api/v1/deals/' + encodeURIComponent(testId) + '?api_token=' + encodeURIComponent(t));
+          var dD = await dR.json();
+          diag.dealFetch = { id: testId, ok: !!(dR.ok && dD && dD.success), status: dR.status,
+            title: (dD && dD.data && dD.data.title) || null,
+            error: (dD && dD.error) || null };
+        } catch (e) { diag.dealFetch = { id: testId, ok:false, error: e.message }; }
+      }
+      diag.ok = diag.tokenValid !== false;
+      return res.status(200).json(diag);
+    }
+
     if (action === 'matchPipedrive') {
       var pdToken = process.env.PIPEDRIVE_API_TOKEN;
       var pdDomain = process.env.PIPEDRIVE_DOMAIN || 'api';
@@ -78,7 +110,7 @@ module.exports = async function handler(req, res) {
       function nz(s){
         return String(s||'').toLowerCase()
           .replace(/[()\[\]{}._\-|,،]/g,' ')
-          .replace(/\b(company|co|ltd|llc|corp|corporation|holding|group|the|by|kabi|hyrdd|inviews)\b/g,' ')
+          .replace(/\b(company|co|ltd|llc|corp|corporation|holding|group|the|by|kabi|hyrdd|inviews|al|el|for|of|and)\b/g,' ')
           .replace(/\s+/g,' ').trim();
       }
       // extract acronym tokens inside parentheses e.g. "... (TDF) (HYRDD)" -> ["tdf","hyrdd"]
@@ -108,21 +140,23 @@ module.exports = async function handler(req, res) {
           if (nName && nTitle === nName) score = 100;
           // strong: acronym appears as its own token in parentheses  e.g. app "TDF" vs "...(TDF)..."
           else if (parenTokens(title).indexOf(lowName) !== -1) score = 95;
-          // strong: whole app name appears as a standalone word in title
-          else if (nName && new RegExp('(^| )' + nName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '( |$)').test(nTitle)) score = 85;
-          // medium: title contains the app name substring
-          else if (lowName.length >= 3 && lowTitle.indexOf(lowName) !== -1) score = 70;
-          // medium: app name contains the title (title is the short form)
-          else if (nTitle.length >= 3 && nName.indexOf(nTitle) !== -1) score = 65;
+          // strong: whole normalized app name appears as a standalone word-run in title
+          else if (nName && nName.length >= 4 && new RegExp('(^| )' + nName.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '( |$)').test(nTitle)) score = 88;
+          // medium: normalized title contains the normalized app name (min 4 chars, distinctive)
+          else if (nName.length >= 4 && nTitle.indexOf(nName) !== -1) score = 72;
+          // medium: normalized app name contains the normalized title (title is short form, min 4)
+          else if (nTitle.length >= 4 && nName.indexOf(nTitle) !== -1) score = 66;
           else {
-            // weak: word-overlap ratio
-            var aw = nName.split(' ').filter(Boolean);
-            var tw = nTitle.split(' ').filter(Boolean);
+            // weak: word-overlap on DISTINCTIVE words only (>=4 chars, after stopword strip)
+            var aw = nName.split(' ').filter(function(x){return x.length>=4;});
+            var tw = nTitle.split(' ').filter(function(x){return x.length>=4;});
             if (aw.length && tw.length) {
               var hit = 0;
-              for (var w = 0; w < aw.length; w++) { if (aw[w].length>2 && tw.indexOf(aw[w])!==-1) hit++; }
+              for (var w = 0; w < aw.length; w++) { if (tw.indexOf(aw[w])!==-1) hit++; }
               var ratio = hit / aw.length;
-              if (ratio >= 0.6) score = 40 + Math.round(ratio*20);
+              // require ALL distinctive app words to match (ratio 1) for a usable score
+              if (ratio >= 1) score = 60;
+              else if (ratio >= 0.5 && hit >= 1) score = 45; // partial -> low confidence only
             }
           }
           if (score > 0) scored.push({ id: allDeals[d].id, title: title, score: score });
@@ -131,11 +165,12 @@ module.exports = async function handler(req, res) {
         scored.sort(function(a,b){ return b.score - a.score; });
 
         if (scored.length) {
-          var conf = scored[0].score >= 85 ? 'high' : (scored[0].score >= 65 ? 'medium' : 'low');
+          var conf = scored[0].score >= 85 ? 'high' : (scored[0].score >= 66 ? 'medium' : 'low');
           results.push({
             name: c.name, current: c.pipedriveId||'',
             match: { id: scored[0].id, title: scored[0].title },
             confidence: conf,
+            autofill: conf !== 'low',  // low-confidence -> don't pre-fill the ID box
             alternatives: scored.slice(1,4).map(function(x){ return { id:x.id, title:x.title }; })
           });
         } else {
