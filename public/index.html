@@ -2067,10 +2067,13 @@ function renderMatchReview(results) {
     var status = matched
       ? '<span style="color:var(--ink-mid);font-size:12px;">' + confDot + (r.match.title||'').replace(/</g,'&lt;') + ' (#' + r.match.id + ')' + confTag + '</span>'
       : '<span style="color:#b04a4a;font-size:12px;">' + (_ia?'لا يوجد تطابق — أدخل المعرّف يدويًا':'No match — enter ID manually') + '</span>';
-    var val = matched ? r.match.id : (r.current||'');
+    var val = (matched && r.autofill !== false) ? r.match.id : (r.current||'');
+    var lowHint = (matched && r.autofill === false)
+      ? '<div style="font-size:10px;color:#b04a4a;margin-top:2px;">' + (_ia?'تطابق ضعيف — تحقق قبل الإدخال. اقتراح: #':'Weak match — verify. Suggested: #') + r.match.id + '</div>'
+      : '';
     return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--rule);">'
       + '<div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:500;color:var(--ink);">' + r.name.replace(/</g,'&lt;') + '</div>'
-      + '<div>' + status + (r.current ? (' <span style="color:var(--ink-light);font-size:11px;">'+(_ia?'حالياً':'now')+': '+r.current+'</span>') : '') + '</div></div>'
+      + '<div>' + status + (r.current ? (' <span style="color:var(--ink-light);font-size:11px;">'+(_ia?'حالياً':'now')+': '+r.current+'</span>') : '') + '</div>' + lowHint + '</div>'
       + '<input type="text" data-mname="' + r.name.replace(/"/g,'&quot;') + '" value="' + val + '" placeholder="ID" style="width:90px;border:1px solid var(--rule);border-radius:6px;padding:6px 8px;font-size:13px;text-align:center;">'
       + '</div>';
   }).join('');
