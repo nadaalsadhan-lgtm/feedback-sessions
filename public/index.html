@@ -2197,6 +2197,7 @@ function cpHead(icon, bg, title, sub) {
 
 function openClientPage(name, group) {
   showView('clientpage');
+  window._currentClientGroup = group;
   var body = document.getElementById('clientPageBody');
   var _ia = currentLang === 'ar';
   var pillCls = group === 'HYRDD' ? 'pill-hyrdd' : group === 'INVIEWS' ? 'pill-inviews' : 'pill-both';
@@ -2271,6 +2272,7 @@ function openClientPage(name, group) {
       html += '<tbody><tr><td>' + badge + '</td>'
         + '<td style="font-size:12px;color:var(--ink-mid);">' + (cm ? cm.replace(/</g,'&lt;') : '—') + '</td>'
         + '<td style="font-size:12px;color:var(--ink-light);">' + when + '</td></tr></tbody></table></div>';
+      html += '<div style="margin-top:12px;"><button type="button" onclick="deleteClientRating(' + JSON.stringify(rt.client).replace(/"/g,'&quot;') + ',\'onboarding_effort\')" style="border:1px solid #e3b7b7;background:transparent;color:#b04a4a;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">🗑 ' + (_ia?'حذف تقييم الانضمام':'Delete onboarding rating') + '</button></div>';
       box.innerHTML = html;
     })
     .catch(function () {
@@ -2374,6 +2376,30 @@ function renderClientPrefs(name, _ia) {
     .catch(function(){
       box.innerHTML = '<div style="color:var(--ink-light);font-size:13px;">' + (_ia?'تعذّر تحميل التفضيلات.':'Could not load preferences.') + '</div>';
     });
+}
+
+// Delete an onboarding or NPS rating for a client (metric = onboarding_effort | nps).
+function deleteClientRating(client, metric){
+  var _ia = currentLang === 'ar';
+  var what = metric === 'nps' ? (_ia?'تقييم NPS':'NPS score') : (_ia?'تقييم الانضمام':'onboarding rating');
+  var msg = _ia ? ('حذف ' + what + ' للعميل "' + client + '"؟ لا يمكن التراجع.') : ('Delete the ' + what + ' for "' + client + '"? This cannot be undone.');
+  if (!confirm(msg)) return;
+  fetch('/api/delete-rating', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ client: client, metric: metric })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d && d.ok) {
+      showToast(_ia ? 'تم الحذف' : 'Deleted');
+      // reload the client page data
+      var grp = (window._currentClientGroup || '');
+      openClientPage(client, grp);
+    } else {
+      alert((_ia?'تعذّر الحذف: ':'Delete failed: ') + ((d&&d.error)||''));
+    }
+  })
+  .catch(function(e){ alert(e.message); });
 }
 
 // Delete a client's submitted preferences (with confirmation).
@@ -2670,6 +2696,7 @@ function renderClientNps(data, target, _ia, T) {
   nh += '<tbody><tr><td>' + npsBadge + '</td>'
     + '<td style="font-size:12px;color:var(--ink-mid);">' + (npsCm ? npsCm.replace(/</g,'&lt;') : '—') + '</td>'
     + '<td style="font-size:12px;color:var(--ink-light);">' + npsWhen + '</td></tr></tbody></table></div>';
+  nh += '<div style="margin-top:12px;"><button type="button" onclick="deleteClientRating(' + JSON.stringify(npsRt.client).replace(/"/g,'&quot;') + ',\'nps\')" style="border:1px solid #e3b7b7;background:transparent;color:#b04a4a;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">🗑 ' + (_ia?'حذف تقييم NPS':'Delete NPS score') + '</button></div>';
   npsBox.innerHTML = nh;
 }
 
