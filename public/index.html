@@ -2365,13 +2365,35 @@ function renderClientPrefs(name, _ia) {
         + (mkt ? ('<button type="button" onclick="openTeamEmail(\'marketing\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد التسويق':'Email Marketing') + '</button>') : '')
         + '<button type="button" onclick="openTeamEmail(\'account\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد مدير الحساب':'Email AM') + '</button>'
         + '<button type="button" onclick="openTeamEmail(\'delivery\')" style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">📧 ' + (_ia?'بريد نجاح العملاء':'Email CS') + '</button>'
-        + '</div></div>';
+        + '</div>'
+        + '<div style="margin-top:12px;"><button type="button" onclick="deleteClientPrefs(' + JSON.stringify(name).replace(/"/g,'&quot;') + ')" style="border:1px solid #e3b7b7;background:transparent;color:#b04a4a;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;">🗑 ' + (_ia?'حذف التفضيلات':'Delete preferences') + '</button></div>'
+        + '</div>';
 
       box.innerHTML = html;
     })
     .catch(function(){
       box.innerHTML = '<div style="color:var(--ink-light);font-size:13px;">' + (_ia?'تعذّر تحميل التفضيلات.':'Could not load preferences.') + '</div>';
     });
+}
+
+// Delete a client's submitted preferences (with confirmation).
+function deleteClientPrefs(name){
+  var _ia = currentLang === 'ar';
+  var msg = _ia
+    ? ('حذف تفضيلات "' + name + '"؟ لا يمكن التراجع عن هذا الإجراء.')
+    : ('Delete preferences for "' + name + '"? This cannot be undone.');
+  if (!confirm(msg)) return;
+  fetch('/api/preferences?client=' + encodeURIComponent(name), { method: 'DELETE' })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (d && d.ok) {
+        showToast(_ia ? 'تم حذف التفضيلات' : 'Preferences deleted');
+        renderClientPrefs(name, _ia); // re-render (will show empty state)
+      } else {
+        alert((_ia?'تعذّر الحذف: ':'Delete failed: ') + ((d&&d.error)||''));
+      }
+    })
+    .catch(function(e){ alert(e.message); });
 }
 
 // Renders the combined sessions (in-app Groq Whisper + Fireflies imports).
@@ -2402,6 +2424,7 @@ function renderClientSessions(name, _ia, T) {
       .map(function (s) {
         return {
           source: 'in_app',
+          _key: s.savedAt || s.date || '',
           date: s.date || s.savedAt || '',
           title: (_ia?'جلسة داخل التطبيق':'In-app session'),
           detail: (_ia?'الدرجة':'Score') + ': ' + ((s.overallScore!=null&&s.overallScore!=='')?s.overallScore:'—') + ' · ' + (s.conductedBy||'—'),
@@ -2419,6 +2442,7 @@ function renderClientSessions(name, _ia, T) {
       var att = attached.map(function (s) {
         return {
           source: s.source || 'fireflies',
+          _key: s.id || s.transcriptId || s.at || s.date || '',
           date: s.date || s.at || '',
           title: s.title || (_ia?'جلسة Fireflies':'Fireflies session'),
           detail: (s.summary ? String(s.summary).slice(0,120) : (_ia?'نص مستورد':'Imported transcript')),
@@ -2426,9 +2450,11 @@ function renderClientSessions(name, _ia, T) {
           transcript: s.text || ''
         };
       });
+      window._cpSessClient = name;
       renderSessionsList(mine.concat(att), _ia, T);
     })
     .catch(function () {
+      window._cpSessClient = name;
       renderSessionsList(mine, _ia, T); // at least show local ones
     });
 }
@@ -2470,6 +2496,9 @@ function renderSessionsList(items, _ia, T) {
         + 'style="border:1px solid var(--rule);background:transparent;color:var(--ink-mid);font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">'
         + (_ia?'عرض التفاصيل':'View details') + '</button>';
     }
+    html += ' <button type="button" class="cp-sess-del" data-src="' + _cpEsc(s.source||'') + '" data-key="' + _cpEsc(String(s._key||'')) + '" '
+      + 'style="border:1px solid #e3b7b7;background:transparent;color:#b04a4a;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">'
+      + '🗑 ' + (_ia?'حذف':'Delete') + '</button>';
     html += '</div>';
 
     if (hasDetail) {
@@ -2492,6 +2521,50 @@ function renderSessionsList(items, _ia, T) {
     html += '</div>';
   });
   list.innerHTML = html;
+
+  // wire delete buttons (event delegation, avoids inline-onclick quote issues)
+  list.querySelectorAll('.cp-sess-del').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var src = btn.getAttribute('data-src');
+      var key = btn.getAttribute('data-key');
+      deleteClientSession(window._cpSessClient || '', src, key, _ia);
+    });
+  });
+}
+
+// Delete a single feedback session (in-app from localStorage, attached from server).
+function deleteClientSession(client, source, key, _ia){
+  var msg = _ia ? 'حذف هذه الجلسة؟ لا يمكن التراجع.' : 'Delete this session? This cannot be undone.';
+  if (!confirm(msg)) return;
+
+  if (source === 'in_app') {
+    try {
+      var all = JSON.parse(localStorage.getItem('fb_sessions') || '[]');
+      all = all.filter(function(s){ return String(s.savedAt||s.date||'') !== String(key); });
+      localStorage.setItem('fb_sessions', JSON.stringify(all));
+    } catch(e){}
+    showToast(_ia ? 'تم حذف الجلسة' : 'Session deleted');
+    var T = { noSess: _ia?'لا توجد جلسات مسجلة لهذا العميل.':'No recorded sessions for this client.', sessions: _ia?'جلسات التغذية الراجعة':'Feedback Sessions' };
+    renderClientSessions(client, _ia, T);
+    return;
+  }
+
+  // attached (server) session
+  fetch('/api/attach-session', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'delete', client: client, id: key })
+  })
+  .then(function(r){ return r.json(); })
+  .then(function(d){
+    if (d && d.ok) {
+      showToast(_ia ? 'تم حذف الجلسة' : 'Session deleted');
+      var T = { noSess: _ia?'لا توجد جلسات مسجلة لهذا العميل.':'No recorded sessions for this client.', sessions: _ia?'جلسات التغذية الراجعة':'Feedback Sessions' };
+      renderClientSessions(client, _ia, T);
+    } else {
+      alert((_ia?'تعذّر الحذف: ':'Delete failed: ') + ((d&&d.error)||''));
+    }
+  })
+  .catch(function(e){ alert(e.message); });
 }
 
 // ─── FIREFLIES IMPORT ────────────────────────────────────────────────────────
