@@ -75,7 +75,7 @@
   .msdd-opt.on .box{background:var(--sc,#0EB3AE);border-color:var(--sc,#0EB3AE);}
   .row2{display:flex;gap:12px;}
   .row2 .field{flex:1;}
-  .submit{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:6px;}
+  .submit{width:100%;background:var(--blue);color:#fff;border:none;border-radius:10px;padding:15px;font-size:16px;font-weight:bold;cursor:pointer;margin-top:6px;font-family:inherit;}
   .submit:disabled{opacity:.6;cursor:default;}
   .foot{text-align:center;color:var(--ink-light);font-size:12px;margin-top:22px;}
   .thanks{display:none;text-align:center;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:44px 24px;margin:24px 0;}
@@ -252,7 +252,6 @@
   <div class="thanks" id="thanks">
     <div class="tick">&#10003;</div>
     <h2 data-en="Thank you!" data-ar="شكراً لك!">Thank you!</h2>
-    <p data-en="Your preferences have been received. We'll use them to tailor how we work together." data-ar="تم استلام تفضيلاتك. سنستخدمها لتخصيص طريقة عملنا معاً.">Your preferences have been received. We'll use them to tailor how we work together.</p>
   </div>
 </div>
 
@@ -261,6 +260,7 @@
   var params = new URLSearchParams(location.search);
   var CLIENT = params.get('client') || '';
   var PRODUCT = params.get('product') || '';
+  var URL_LANG = (params.get('lang') || '').toLowerCase() === 'ar' ? 'ar' : 'en';
   var selections = {};
 
   var currentLang = 'en';
@@ -385,6 +385,9 @@
     lbl.appendChild(star);
   });
 
+  // Apply the language passed in the link (?lang=ar or ?lang=en)
+  setLang(URL_LANG);
+
   function submitForm(e){
     e.preventDefault();
     var f = document.getElementById('prefForm');
@@ -457,11 +460,7 @@
         setLang(thankLang);
         var th = document.getElementById('thanks');
         var h2 = th.querySelector('h2');
-        var pMsg = th.querySelector('p');
         if (h2) h2.textContent = (thankLang==='ar') ? 'شكراً لك!' : 'Thank you!';
-        if (pMsg) pMsg.textContent = (thankLang==='ar')
-          ? 'تم استلام تفضيلاتك. سنستخدمها لتخصيص طريقة عملنا معاً.'
-          : 'Your preferences have been received. We\'ll use them to tailor how we work together.';
         f.style.display='none';
         th.style.display='block';
         window.scrollTo({top:0,behavior:'smooth'});
