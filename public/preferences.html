@@ -90,7 +90,7 @@
 </div>
 
 <div class="wrap">
-  <div class="head">
+  <div class="head" id="pageHead">
     <h1 data-en="Your Profile" data-ar="ملف العميل">Your Profile</h1>
     <p data-en="We'd like to learn more about your team, communication preferences, and project goals. This information will help us personalize your experience with KABi throughout your journey." data-ar="نود التعرّف على فريقكم، وتفضيلات التواصل، وأهداف المشروع. ستساعدنا هذه المعلومات على تقديم تجربة مخصصة تلبي احتياجاتكم طوال رحلتكم مع كابي.">We'd like to learn more about your team, communication preferences, and project goals. This information will help us personalize your experience with KABi throughout your journey.</p>
     <div class="langbar">
@@ -462,6 +462,7 @@
         var h2 = th.querySelector('h2');
         if (h2) h2.textContent = (thankLang==='ar') ? 'شكراً لك!' : 'Thank you!';
         f.style.display='none';
+        var ph = document.getElementById('pageHead'); if (ph) ph.style.display='none';
         th.style.display='block';
         window.scrollTo({top:0,behavior:'smooth'});
       })
