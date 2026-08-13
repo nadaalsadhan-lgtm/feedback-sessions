@@ -92,10 +92,14 @@ module.exports = async function handler(req, res) {
     try {
       var pdId = await clientPipedriveId(url, hdr, name);
       var pdToken = process.env.PIPEDRIVE_API_TOKEN;
-      if (pdId && pdToken) {
+      if (!pdToken) {
+        pipedriveResult = { ok: false, error: 'PIPEDRIVE_API_TOKEN not set', skipped: true };
+      } else if (!pdId) {
+        pipedriveResult = { ok: false, error: 'No Pipedrive Deal ID saved for client "' + name + '" — run Match Pipedrive IDs first, or set it in Manage clients.', skipped: true };
+      } else {
         var pdDomain = process.env.PIPEDRIVE_DOMAIN || 'api';
 
-        // 1) Post the note (existing behaviour)
+        // 1) Post the note
         var noteHtml = pipedriveNote(record, routing);
         var pdPayload = { content: noteHtml, deal_id: Number(pdId) || undefined };
         var pdUrl = 'https://' + pdDomain + '.pipedrive.com/api/v1/notes?api_token=' + encodeURIComponent(pdToken);
@@ -105,10 +109,10 @@ module.exports = async function handler(req, res) {
         });
         var pdData = await pdResp.json();
         pipedriveResult = (pdResp.ok && pdData && pdData.success !== false)
-          ? { ok: true, id: pdData.data && pdData.data.id }
-          : { ok: false, error: (pdData && pdData.error) || ('Pipedrive error ' + pdResp.status) };
+          ? { ok: true, id: pdData.data && pdData.data.id, dealId: pdId }
+          : { ok: false, error: (pdData && (pdData.error || pdData.error_info)) || ('Pipedrive error ' + pdResp.status), dealId: pdId };
 
-        // 2) Update the two custom fields on the deal
+        // 2) Update the custom fields on the deal
         var fieldUpdate = pipedriveCustomFields(record);
         if (Object.keys(fieldUpdate).length) {
           var dealUrl = 'https://' + pdDomain + '.pipedrive.com/api/v1/deals/' + encodeURIComponent(pdId) + '?api_token=' + encodeURIComponent(pdToken);
@@ -119,7 +123,7 @@ module.exports = async function handler(req, res) {
           var fData = await fResp.json();
           pipedriveFields = (fResp.ok && fData && fData.success !== false)
             ? { ok: true }
-            : { ok: false, error: (fData && fData.error) || ('Pipedrive field error ' + fResp.status) };
+            : { ok: false, error: (fData && (fData.error || fData.error_info)) || ('Pipedrive field error ' + fResp.status) };
         }
       }
     } catch (e) { pipedriveResult = { ok: false, error: e.message }; }
@@ -156,15 +160,23 @@ function pipedriveCustomFields(p) {
   return out;
 }
 
-// Look up a client's Pipedrive org id from the managed clients list.
+// Look up a client's Pipedrive deal id from the managed clients list.
 async function clientPipedriveId(url, hdr, name) {
   try {
     var r = await fetch(url + '/get/clients:list', hdr);
     var d = await r.json();
     if (!d || !d.result) return '';
     var list = JSON.parse(d.result) || [];
-    var match = list.find(function (c) { return (c.name || '').toLowerCase() === name.toLowerCase(); });
-    return match && match.pipedriveId ? match.pipedriveId : '';
+    var target = (name || '').trim().toLowerCase();
+    // 1) exact (trimmed, case-insensitive)
+    var match = list.find(function (c) { return (c.name || '').trim().toLowerCase() === target; });
+    // 2) fallback: ignore surrounding punctuation/extra spaces
+    if (!match) {
+      var nz = function(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]+/g,' ').trim(); };
+      var nt = nz(target);
+      match = list.find(function (c) { return nz(c.name) === nt; });
+    }
+    return match && match.pipedriveId ? String(match.pipedriveId).trim() : '';
   } catch (e) { return ''; }
 }
 
