@@ -9,7 +9,7 @@
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
@@ -27,6 +27,18 @@ module.exports = async function handler(req, res) {
       if (!d || !d.result) return res.status(200).json({ ok: true, prefs: null });
       var prefs; try { prefs = JSON.parse(d.result); } catch (e) { prefs = null; }
       return res.status(200).json({ ok: true, prefs: prefs });
+    }
+
+    // Delete a client's preferences record
+    if (req.method === 'DELETE' || (req.query && req.query.action === 'delete')) {
+      var delClient = (req.query && req.query.client) || '';
+      if (!delClient) {
+        var b = req.body; if (typeof b === 'string'){ try{b=JSON.parse(b);}catch(e){b={};} }
+        delClient = (b && b.client) || '';
+      }
+      if (!delClient) return res.status(400).json({ ok: false, error: 'missing client' });
+      await fetch(url + '/del/prefs:' + encodeURIComponent(delClient), { method:'POST', headers: hdr.headers });
+      return res.status(200).json({ ok: true, deleted: delClient });
     }
 
     var body = req.body;
@@ -60,6 +72,9 @@ module.exports = async function handler(req, res) {
       oneThing: clean(body.oneThing),
       frustration: clean(body.frustration),
       socialOk: clean(body.socialOk),
+      mktgName: clean(body.mktgName),
+      mktgEmail: clean(body.mktgEmail),
+      mktgPhone: clean(body.mktgPhone),
       submittedAt: new Date().toISOString()
     };
 
@@ -121,12 +136,14 @@ function pipedriveCustomFields(p) {
   var out = {};
 
   // Preferred Communication Tool (field_type: set / multiple options)
-  // form label -> Pipedrive option id
+  // commTool may now be multiple, comma-separated labels e.g. "Email, WhatsApp"
   var TOOL_KEY = 'ca50cc5ff0eeeb68c65311bff04d97ca540804db';
-  var TOOL_MAP = { 'Email':255, 'Phone':256, 'WhatsApp':257, 'Teams':259 }; // Slack intentionally dropped
-  if (p.commTool && TOOL_MAP[p.commTool] != null) {
-    // "set" fields accept a comma-separated string of option ids
-    out[TOOL_KEY] = String(TOOL_MAP[p.commTool]);
+  var TOOL_MAP = { 'Email':255, 'Phone':256, 'WhatsApp':257, 'Teams':259 }; // Slack dropped; Phone->Call(256)
+  if (p.commTool) {
+    var ids = p.commTool.split(',').map(function(s){ return s.trim(); })
+      .map(function(lbl){ return TOOL_MAP[lbl]; })
+      .filter(function(id){ return id != null; });
+    if (ids.length) out[TOOL_KEY] = ids.join(','); // "set" accepts comma-separated option ids
   }
 
   // Preferred Language (field_type: enum / single option)
@@ -156,10 +173,14 @@ function buildRouting(p) {
   var teams = {};
   // Marketing: social announcement
   if (p.socialOk) {
+    var mktgPoc = '';
+    if (p.mktgName || p.mktgEmail || p.mktgPhone) {
+      mktgPoc = ' Marketing contact: ' + [p.mktgName, p.mktgEmail, p.mktgPhone].filter(Boolean).join(' · ') + '.';
+    }
     teams.marketing = {
       trigger: 'Social announcement: ' + p.socialOk,
       flag: /^yes/i.test(p.socialOk) ? 'APPROVED to announce' : (/^no/i.test(p.socialOk) ? 'DO NOT announce' : 'Discuss before announcing'),
-      details: 'Client "' + p.client + '" answered "' + p.socialOk + '" to announcing the partnership on social media.'
+      details: 'Client "' + p.client + '" answered "' + p.socialOk + '" to announcing the partnership on social media.' + mktgPoc
     };
   }
   // Account team: goals, success, comms, cadence
