@@ -554,7 +554,90 @@ html[lang="ar"] .voice-timer { text-align:left; }
 
 <div class="toast" id="toast"></div>
 
+<!-- ============================================================
+     ADMIN LOGIN GATE  —  paste this immediately after <script>
+     (the FIRST <script> that starts your app code, i.e. right
+      before  "// ─── LANGUAGE SYSTEM ───" )
+     ------------------------------------------------------------
+     What it does:
+       1. On load, asks for the admin password (once).
+       2. Stores it in this browser (sessionStorage).
+       3. Wraps window.fetch so EVERY call to /api/* automatically
+          carries the  x-admin-password  header.
+       4. If any /api call returns 401, it clears the saved
+          password and re-prompts.
+     ============================================================ -->
 <script>
+(function () {
+  var KEY = 'kabi_admin_pw';
+
+  function getPw() {
+    try { return sessionStorage.getItem(KEY) || ''; } catch (e) { return ''; }
+  }
+  function setPw(v) {
+    try { sessionStorage.setItem(KEY, v); } catch (e) {}
+  }
+  function clearPw() {
+    try { sessionStorage.removeItem(KEY); } catch (e) {}
+  }
+
+  // Ask for the password if we don't have one yet.
+  function ensurePw() {
+    var pw = getPw();
+    while (!pw) {
+      pw = window.prompt('Enter the admin password to access the dashboard:', '');
+      if (pw === null) {
+        // user cancelled — show a minimal locked message and stop.
+        document.documentElement.innerHTML =
+          '<body style="font-family:Arial,sans-serif;display:flex;align-items:center;'
+          + 'justify-content:center;height:100vh;margin:0;color:#555;">'
+          + '<div style="text-align:center;">'
+          + '<div style="font-size:15px;">🔒 This dashboard is protected.</div>'
+          + '<div style="margin-top:10px;font-size:13px;color:#999;">Reload the page to enter the password.</div>'
+          + '</div></body>';
+        throw new Error('admin login cancelled');
+      }
+      pw = (pw || '').trim();
+    }
+    setPw(pw);
+    return pw;
+  }
+
+  // Run the prompt now, before any fetch fires.
+  ensurePw();
+
+  // Wrap fetch so admin password rides along on every /api/ request.
+  var _fetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    init = init || {};
+    var url = (typeof input === 'string') ? input : (input && input.url) || '';
+    var isApi = url.indexOf('/api/') !== -1;
+
+    if (isApi) {
+      var headers = new Headers(init.headers || (typeof input !== 'string' && input.headers) || {});
+      headers.set('x-admin-password', getPw());
+      init.headers = headers;
+    }
+
+    return _fetch(input, init).then(function (res) {
+      // If the server rejects the password, clear it and re-prompt once.
+      if (isApi && res.status === 401) {
+        clearPw();
+        alert('Wrong or expired password — please enter it again.');
+        try { ensurePw(); } catch (e) { return res; }
+        // retry the request once with the new password
+        var h2 = new Headers(init.headers || {});
+        h2.set('x-admin-password', getPw());
+        init.headers = h2;
+        return _fetch(input, init);
+      }
+      return res;
+    });
+  };
+})();
+</script>
+
+  <script>
 // ─── LANGUAGE SYSTEM ─────────────────────────────────────────────────────────
 let currentLang = 'en';
 
