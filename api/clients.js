@@ -10,13 +10,20 @@
 // POST /api/clients { action:"seed",   clients:[...] }   (one-time import)
 //
 // group is "HYRDD" | "INVIEWS" | "BOTH".
+//
+// *** ADMIN-ONLY: every request must carry the admin password. ***
 // ============================================================
+
+var auth = require('./_auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // --- admin gate: nothing below runs without the correct password ---
+  if (!auth.check(req, res)) return;
 
   var url = process.env.KV_REST_API_URL;
   var token = process.env.KV_REST_API_TOKEN;
