@@ -7,19 +7,24 @@
 // POST { client, source, title, date, text, summary }
 //   source: "fireflies" | "in_app"
 // GET  ?client=NAME  -> { ok, sessions:[...] } for that client
+//
+// *** ADMIN-ONLY: every request must carry the admin password. ***
 // ============================================================
+var auth = require('./_auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
   if (req.method === 'OPTIONS') return res.status(200).end();
+
+  // --- admin gate: nothing below runs without the correct password ---
+  if (!auth.check(req, res)) return;
 
   var url = process.env.KV_REST_API_URL;
   var authToken = process.env.KV_REST_API_TOKEN;
   if (!url || !authToken) return res.status(500).json({ ok: false, error: 'KV env vars not set' });
   var hdr = { headers: { Authorization: 'Bearer ' + authToken } };
-
   try {
     if (req.method === 'GET') {
       var client = (req.query && req.query.client) || '';
@@ -31,13 +36,11 @@ module.exports = async function handler(req, res) {
       for (var i = 0; i < raw.length; i++) { try { sessions.push(JSON.parse(raw[i])); } catch (e) {} }
       return res.status(200).json({ ok: true, sessions: sessions });
     }
-
     // POST -> attach (or delete)
     var body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
     body = body || {};
     if (!body.client) return res.status(400).json({ ok: false, error: 'missing client' });
-
     // Delete a single session by id (rewrites the list without it)
     if (body.action === 'delete') {
       var listKey = 'sessions:' + encodeURIComponent(body.client);
@@ -58,7 +61,6 @@ module.exports = async function handler(req, res) {
       }
       return res.status(200).json({ ok: true, deleted: body.id, remaining: kept.length });
     }
-
     var record = {
       id: 'sess_' + Date.now(),
       client: body.client,
@@ -71,7 +73,6 @@ module.exports = async function handler(req, res) {
     };
     var payload = encodeURIComponent(JSON.stringify(record));
     await fetch(url + '/lpush/sessions:' + encodeURIComponent(body.client) + '/' + payload, hdr);
-
     return res.status(200).json({ ok: true, id: record.id });
   } catch (err) {
     return res.status(500).json({ ok: false, error: err.message });
