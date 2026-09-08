@@ -9,26 +9,29 @@
 //   { action: "get", id: "<id>" }      -> full transcript text + summary for one meeting
 //
 // The client transcript is then attached to a client via /api/attach-session.
+//
+// *** ADMIN-ONLY: every request must carry the admin password. ***
 // ============================================================
+var auth = require('./_auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, x-admin-password');
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'POST only' });
 
+  // --- admin gate: nothing below runs without the correct password ---
+  if (!auth.check(req, res)) return;
+
   var apiKey = process.env.FIREFLIES_API_KEY;
   if (!apiKey) return res.status(500).json({ ok: false, error: 'FIREFLIES_API_KEY not set' });
-
   try {
     var body = req.body;
     if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = {}; } }
     body = body || {};
     var action = body.action || 'list';
-
     var query, variables = {};
-
     if (action === 'list') {
       // recent transcripts (most recent first). limit kept modest.
       query = 'query Transcripts($limit: Int) { transcripts(limit: $limit) { id title date duration } }';
@@ -43,7 +46,6 @@ module.exports = async function handler(req, res) {
     } else {
       return res.status(400).json({ ok: false, error: 'unknown action' });
     }
-
     var upstream = await fetch('https://api.fireflies.ai/graphql', {
       method: 'POST',
       headers: {
@@ -52,13 +54,11 @@ module.exports = async function handler(req, res) {
       },
       body: JSON.stringify({ query: query, variables: variables })
     });
-
     var data = await upstream.json();
     if (!upstream.ok || (data && data.errors)) {
       var msg = (data && data.errors && data.errors[0] && data.errors[0].message) || 'Fireflies API error';
       return res.status(upstream.ok ? 400 : upstream.status).json({ ok: false, error: msg });
     }
-
     if (action === 'list') {
       var list = (data.data && data.data.transcripts) ? data.data.transcripts : [];
       return res.status(200).json({ ok: true, transcripts: list });
