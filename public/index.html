@@ -1007,7 +1007,7 @@ async function analyzeTranscript(transcript) {
 
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         max_tokens: 1500,
         system: `You are a real-time product feedback analysis agent. You receive transcripts from live client feedback sessions. The conversation may be in English, Arabic, or mixed — analyze fully and respond in English.
 
@@ -2896,7 +2896,7 @@ CONTEXT: This may be a live session or saved notes. Continuously refine insights
 
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'openai/gpt-oss-120b',
         max_tokens: 1500,
         system: systemPrompt,
         messages: [{ role: 'user', content: userMessage }]
