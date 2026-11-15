@@ -38,8 +38,11 @@ module.exports = async function handler(req, res) {
     try { return JSON.parse(d.result) || []; } catch (e) { return []; }
   }
   async function writeClients(list) {
-    var payload = encodeURIComponent(JSON.stringify(list));
-    await fetch(url + '/set/' + KEY + '/' + payload, hdr);
+    await fetch(url + '/set/' + KEY, {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: JSON.stringify(list)
+    });
   }
   function norm(s){ return (s||'').toString().trim(); }
   function validGroup(g){ return ['HYRDD','INVIEWS','BOTH'].indexOf(g) !== -1 ? g : 'HYRDD'; }
